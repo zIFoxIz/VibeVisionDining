@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Android/Gradle
+.gradle/
+**/build/
+local.properties
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Large/binary model artifacts not needed in git
+*.pkl

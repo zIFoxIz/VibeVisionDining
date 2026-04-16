@@ -1,0 +1,12 @@
+{
+  "model_type": "LogisticRegression",
+  "n_features": 5000,
+  "classes": [
+    "negative",
+    "neutral",
+    "positive"
+  ],
+  "accuracy": 0.8660804020100502,
+  "test_size": 3980,
+  "feature_extractor": "TF-IDF"
+}
