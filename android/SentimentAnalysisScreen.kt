@@ -62,7 +62,7 @@ fun SentimentAnalysisScreen(viewModel: SentimentViewModel) {
                     placeholder = { Text("Enter restaurant review here...") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .minimmumHeight(120.dp),
+                        .heightIn(min = 120.dp),
                     maxLines = 6,
                     minLines = 4
                 )
@@ -193,7 +193,10 @@ fun ResultCard(result: SentimentAnalyzer.PredictionResult) {
                         .padding(top = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(text = label.capitalize(), fontSize = 12.sp)
+                    Text(
+                        text = label.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() },
+                        fontSize = 12.sp
+                    )
                     Text(
                         text = String.format("%.2f", score),
                         fontSize = 12.sp,
@@ -244,7 +247,11 @@ fun BarChartRow(label: String, value: Float) {
                 .padding(bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = label.capitalize(), fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            Text(
+                text = label.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() },
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp
+            )
             Text(text = String.format("%.1f%%", value * 100), fontSize = 12.sp, color = Color.Gray)
         }
 
