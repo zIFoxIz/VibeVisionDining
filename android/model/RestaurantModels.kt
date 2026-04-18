@@ -1,9 +1,17 @@
 package com.example.vibevision.model
 
+enum class ReviewCategory {
+    FOOD,
+    SERVICE,
+    ATMOSPHERE,
+    VALUE
+}
+
 data class Review(
     val id: String,
     val text: String,
-    val rating: Int
+    val rating: Int,
+    val category: ReviewCategory
 )
 
 data class DishSentiment(
@@ -19,6 +27,8 @@ data class Restaurant(
     val cuisine: String,
     val priceLevel: Int,
     val vibeTags: List<String>,
+    val photoLabels: List<String>,
+    val menuPreview: List<String>,
     val reviews: List<Review>,
     val dishSentiments: List<DishSentiment>
 )

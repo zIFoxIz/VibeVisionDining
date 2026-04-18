@@ -20,8 +20,12 @@ import com.example.vibevision.ui.components.RestaurantCard
 @Composable
 fun HomeFeedScreen(
     restaurants: List<Restaurant>,
+    favorites: List<Restaurant>,
+    recentlyViewed: List<Restaurant>,
+    favoriteIds: Set<String>,
     aiSummary: String,
-    onRestaurantClick: (Restaurant) -> Unit
+    onRestaurantClick: (Restaurant) -> Unit,
+    onFavoriteToggle: (String) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -43,6 +47,24 @@ fun HomeFeedScreen(
 
         item {
             Text(text = "Home Feed", fontWeight = FontWeight.Bold)
+        }
+
+        if (favorites.isNotEmpty()) {
+            item {
+                Text(text = "Favorites List", fontWeight = FontWeight.SemiBold)
+            }
+            items(favorites) { restaurant ->
+                RestaurantCard(restaurant = restaurant, onClick = onRestaurantClick)
+            }
+        }
+
+        if (recentlyViewed.isNotEmpty()) {
+            item {
+                Text(text = "Recently Viewed Restaurants", fontWeight = FontWeight.SemiBold)
+            }
+            items(recentlyViewed) { restaurant ->
+                RestaurantCard(restaurant = restaurant, onClick = onRestaurantClick)
+            }
         }
 
         items(restaurants) { restaurant ->

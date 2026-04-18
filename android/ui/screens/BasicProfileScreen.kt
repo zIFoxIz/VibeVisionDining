@@ -19,7 +19,9 @@ import com.example.vibevision.model.VibePreference
 @Composable
 fun BasicProfileScreen(
     preferences: List<VibePreference>,
-    onToggle: (String) -> Unit
+    isDarkMode: Boolean,
+    onToggle: (String) -> Unit,
+    onDarkModeToggle: (Boolean) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -37,6 +39,24 @@ fun BasicProfileScreen(
                         Text(text = pref.vibe)
                         Switch(checked = pref.enabled, onCheckedChange = { onToggle(pref.vibe) })
                     }
+                }
+            }
+        }
+
+        Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "User Account Settings", fontWeight = FontWeight.SemiBold)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "Display Name")
+                    Text(text = "VibeExplorer")
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "Email")
+                    Text(text = "user@vibevision.app")
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "Light Mode and Dark Mode")
+                    Switch(checked = isDarkMode, onCheckedChange = onDarkModeToggle)
                 }
             }
         }
