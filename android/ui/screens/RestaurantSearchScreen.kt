@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,7 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.vibevision.model.Restaurant
+import com.example.vibevision.ui.components.EmptyStateCard
 import com.example.vibevision.ui.components.RestaurantCard
+import com.example.vibevision.ui.components.SectionHeader
 
 @Composable
 fun RestaurantSearchScreen(
@@ -30,12 +33,14 @@ fun RestaurantSearchScreen(
     availableCuisines: List<String>,
     availablePrices: List<Int>,
     availableVibes: List<String>,
+    favoriteIds: Set<String>,
     selectedCuisines: Set<String>,
     selectedPrices: Set<Int>,
     selectedVibes: Set<String>,
     showFilterOverlay: Boolean,
     onQueryChange: (String) -> Unit,
     onRestaurantClick: (Restaurant) -> Unit,
+    onFavoriteToggle: (String) -> Unit,
     onSetCity: (String) -> Unit,
     onToggleOverlay: () -> Unit,
     onToggleCuisine: (String) -> Unit,
@@ -49,7 +54,7 @@ fun RestaurantSearchScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(text = "Restaurant Search", fontWeight = FontWeight.Bold)
+        SectionHeader(title = "Restaurant Search", subtitle = "Filter by city, cuisine, vibe, and price")
 
         Text(text = "Multi-City Support")
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -121,9 +126,31 @@ fun RestaurantSearchScreen(
             }
         }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = "${restaurants.size} result(s) in $selectedCity",
+            fontWeight = FontWeight.SemiBold
+        )
+
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (restaurants.isEmpty()) {
+                item {
+                    EmptyStateCard(
+                        title = "No results found",
+                        message = "Try changing city, query, or filters."
+                    )
+                }
+            }
+
             items(restaurants) { restaurant ->
-                RestaurantCard(restaurant = restaurant, onClick = onRestaurantClick)
+                RestaurantCard(
+                    restaurant = restaurant,
+                    onClick = onRestaurantClick,
+                    isFavorite = favoriteIds.contains(restaurant.id),
+                    onFavoriteToggle = onFavoriteToggle
+                )
             }
         }
     }

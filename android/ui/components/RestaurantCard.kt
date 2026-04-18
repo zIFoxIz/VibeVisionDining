@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -18,7 +19,9 @@ import com.example.vibevision.model.Restaurant
 @Composable
 fun RestaurantCard(
     restaurant: Restaurant,
-    onClick: (Restaurant) -> Unit
+    onClick: (Restaurant) -> Unit,
+    isFavorite: Boolean = false,
+    onFavoriteToggle: ((String) -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
@@ -27,8 +30,16 @@ fun RestaurantCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(text = restaurant.name, fontWeight = FontWeight.Bold)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(text = restaurant.name, fontWeight = FontWeight.Bold)
+                if (onFavoriteToggle != null) {
+                    TextButton(onClick = { onFavoriteToggle(restaurant.id) }) {
+                        Text(if (isFavorite) "Unfav" else "Fav")
+                    }
+                }
+            }
             Text(text = "${restaurant.cuisine} • ${"$".repeat(restaurant.priceLevel)}")
+            Text(text = restaurant.city)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 restaurant.vibeTags.take(3).forEach { tag ->
                     Text(text = "#$tag")

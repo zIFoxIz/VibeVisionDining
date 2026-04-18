@@ -39,6 +39,9 @@ fun RestaurantDetailScreen(
     reviews: List<Review>,
     vibePreferences: List<VibePreference>,
     isFavorite: Boolean,
+    vibeMatchScore: Float,
+    vibeMatchDescription: String,
+    heatmapScores: Map<String, Float>,
     aiSummary: String,
     timeline: List<String>,
     selectedShareTemplate: String,
@@ -47,7 +50,6 @@ fun RestaurantDetailScreen(
     onShareTemplateChange: (String) -> Unit,
     onSubmitReview: (String, Int, ReviewCategory) -> Unit
 ) {
-    val vibeMatchScore = calculateVibeMatch(restaurant.vibeTags, vibePreferences)
     var selectedCategory by remember { mutableStateOf("All") }
     var sortOption by remember { mutableStateOf("Highest") }
     var draftReview by remember { mutableStateOf("") }
@@ -118,6 +120,7 @@ fun RestaurantDetailScreen(
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(text = "Vibe Match System", fontWeight = FontWeight.SemiBold)
                     Text(text = "Current match: ${String.format("%.0f", vibeMatchScore * 100)}%")
+                    Text(text = vibeMatchDescription)
                 }
             }
         }
@@ -146,15 +149,7 @@ fun RestaurantDetailScreen(
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(text = "Emotion Heatmap", fontWeight = FontWeight.SemiBold)
-                    EmotionHeatmap(
-                        mapOf(
-                            "joy" to (0.55f + vibeMatchScore * 0.3f),
-                            "calm" to 0.45f,
-                            "neutral" to 0.25f,
-                            "frustration" to (0.2f - vibeMatchScore * 0.1f).coerceAtLeast(0.05f),
-                            "anger" to 0.1f
-                        )
-                    )
+                    EmotionHeatmap(scores = heatmapScores)
                 }
             }
         }
@@ -301,9 +296,3 @@ private fun filterAndSortReviews(reviews: List<Review>, category: String, sort: 
     }
 }
 
-private fun calculateVibeMatch(tags: List<String>, prefs: List<VibePreference>): Float {
-    val enabled = prefs.filter { it.enabled }.map { it.vibe }.toSet()
-    if (enabled.isEmpty()) return 0f
-    val overlap = tags.count { enabled.contains(it) }
-    return overlap.toFloat() / enabled.size.toFloat()
-}

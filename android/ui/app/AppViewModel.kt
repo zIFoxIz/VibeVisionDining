@@ -1,7 +1,10 @@
 package com.example.vibevision.ui.app
 
 import androidx.lifecycle.ViewModel
-import com.example.vibevision.data.SampleRestaurantData
+import com.example.vibevision.data.repo.RestaurantRepository
+import com.example.vibevision.di.AppContainer
+import com.example.vibevision.domain.HeatmapCalculator
+import com.example.vibevision.domain.VibeMatchEngine
 import com.example.vibevision.model.LanguageOption
 import com.example.vibevision.model.Restaurant
 import com.example.vibevision.model.Review
@@ -30,7 +33,7 @@ data class AnalyticsSnapshot(
 
 data class AppState(
     val route: AppRoute = AppRoute.HOME,
-    val restaurants: List<Restaurant> = SampleRestaurantData.restaurants,
+    val restaurants: List<Restaurant> = emptyList(),
     val selectedRestaurant: Restaurant? = null,
     val searchQuery: String = "",
     val selectedCity: String = "All",
@@ -56,9 +59,20 @@ data class AppState(
     )
 )
 
-class AppViewModel : ViewModel() {
+class AppViewModel(
+    private val repository: RestaurantRepository = AppContainer.restaurantRepository
+) : ViewModel() {
     private val _uiState = MutableStateFlow(AppState())
     val uiState: StateFlow<AppState> = _uiState.asStateFlow()
+
+    init {
+        val restaurants = repository.loadRestaurants()
+        _uiState.value = _uiState.value.copy(
+            restaurants = restaurants,
+            favoriteRestaurantIds = repository.getFavoriteIds(),
+            userSubmittedReviews = repository.getUserReviews()
+        )
+    }
 
     fun navigate(route: AppRoute) {
         _uiState.value = _uiState.value.copy(route = route)
@@ -95,6 +109,7 @@ class AppViewModel : ViewModel() {
     fun toggleFavorite(restaurantId: String) {
         val current = _uiState.value.favoriteRestaurantIds
         val updated = if (current.contains(restaurantId)) current - restaurantId else current + restaurantId
+        repository.saveFavoriteIds(updated)
         _uiState.value = _uiState.value.copy(favoriteRestaurantIds = updated)
     }
 
@@ -149,8 +164,7 @@ class AppViewModel : ViewModel() {
     }
 
     fun simulateRealTimeReviewScrape() {
-        val stamp = System.currentTimeMillis()
-        _uiState.value = _uiState.value.copy(lastScrapeStatus = "Scrape simulated at $stamp")
+        _uiState.value = _uiState.value.copy(lastScrapeStatus = repository.scrapeReviewStatus())
     }
 
     fun submitUserReview(restaurantId: String, text: String, rating: Int, category: ReviewCategory) {
@@ -158,12 +172,14 @@ class AppViewModel : ViewModel() {
 
         val state = _uiState.value
         val existing = state.userSubmittedReviews[restaurantId].orEmpty()
-        val next = existing + Review(
+        val newReview = Review(
             id = "usr_${System.currentTimeMillis()}",
             text = text,
             rating = rating.coerceIn(1, 5),
             category = category
         )
+        val next = existing + newReview
+        repository.appendUserReview(restaurantId, newReview)
         _uiState.value = state.copy(userSubmittedReviews = state.userSubmittedReviews + (restaurantId to next))
     }
 
@@ -214,15 +230,32 @@ class AppViewModel : ViewModel() {
 
     fun personalizedRecommendations(): List<Restaurant> {
         val state = _uiState.value
-        val enabled = state.vibePreferences.filter { it.enabled }.map { it.vibe }.toSet()
 
         return filteredRestaurants()
             .sortedByDescending { restaurant ->
-                val vibeScore = restaurant.vibeTags.count { enabled.contains(it) }
+                val reviews = reviewsForRestaurant(restaurant)
+                val vibeScore = VibeMatchEngine.score(restaurant.vibeTags, state.vibePreferences, reviews)
                 val favoriteBoost = if (state.favoriteRestaurantIds.contains(restaurant.id)) 2 else 0
                 vibeScore + favoriteBoost
             }
             .take(5)
+    }
+
+    fun vibeMatchScore(restaurant: Restaurant): Float {
+        return VibeMatchEngine.score(
+            vibeTags = restaurant.vibeTags,
+            preferences = _uiState.value.vibePreferences,
+            reviews = reviewsForRestaurant(restaurant)
+        )
+    }
+
+    fun vibeMatchExplanation(restaurant: Restaurant): String {
+        return VibeMatchEngine.explain(vibeMatchScore(restaurant))
+    }
+
+    fun heatmapForRestaurant(restaurant: Restaurant): Map<String, Float> {
+        val score = vibeMatchScore(restaurant)
+        return HeatmapCalculator.compute(reviewsForRestaurant(restaurant), score)
     }
 
     fun aiGeneratedSummary(restaurant: Restaurant): String {

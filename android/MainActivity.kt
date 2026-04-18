@@ -3,8 +3,6 @@ package com.example.vibevision
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import com.google.gson.JsonParser
 import com.example.vibevision.ml.SentimentAnalyzer
 import com.example.vibevision.ui.app.VibeVisionApp
@@ -36,11 +34,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            MaterialTheme {
-                Surface(color = MaterialTheme.colorScheme.background) {
-                    VibeVisionApp(analyzer = modelAnalyzer)
-                }
-            }
+            VibeVisionApp(analyzer = modelAnalyzer)
         }
     }
 }
