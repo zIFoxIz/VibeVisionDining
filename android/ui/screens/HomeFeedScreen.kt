@@ -23,6 +23,8 @@ fun HomeFeedScreen(
     favorites: List<Restaurant>,
     recentlyViewed: List<Restaurant>,
     favoriteIds: Set<String>,
+    recommendations: List<Restaurant>,
+    isOfflineMode: Boolean,
     aiSummary: String,
     onRestaurantClick: (Restaurant) -> Unit,
     onFavoriteToggle: (String) -> Unit
@@ -33,6 +35,20 @@ fun HomeFeedScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        if (isOfflineMode) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "Offline Mode", fontWeight = FontWeight.SemiBold)
+                        Text(text = "Live network features are disabled. Local analysis and cached data remain available.")
+                    }
+                }
+            }
+        }
+
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -47,6 +63,15 @@ fun HomeFeedScreen(
 
         item {
             Text(text = "Home Feed", fontWeight = FontWeight.Bold)
+        }
+
+        if (recommendations.isNotEmpty()) {
+            item {
+                Text(text = "Personalized Restaurant Recommendations", fontWeight = FontWeight.SemiBold)
+            }
+            items(recommendations) { restaurant ->
+                RestaurantCard(restaurant = restaurant, onClick = onRestaurantClick)
+            }
         }
 
         if (favorites.isNotEmpty()) {

@@ -25,6 +25,8 @@ import com.example.vibevision.ui.components.RestaurantCard
 fun RestaurantSearchScreen(
     query: String,
     restaurants: List<Restaurant>,
+    selectedCity: String,
+    availableCities: List<String>,
     availableCuisines: List<String>,
     availablePrices: List<Int>,
     availableVibes: List<String>,
@@ -34,6 +36,7 @@ fun RestaurantSearchScreen(
     showFilterOverlay: Boolean,
     onQueryChange: (String) -> Unit,
     onRestaurantClick: (Restaurant) -> Unit,
+    onSetCity: (String) -> Unit,
     onToggleOverlay: () -> Unit,
     onToggleCuisine: (String) -> Unit,
     onTogglePrice: (Int) -> Unit,
@@ -47,6 +50,18 @@ fun RestaurantSearchScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(text = "Restaurant Search", fontWeight = FontWeight.Bold)
+
+        Text(text = "Multi-City Support")
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(availableCities) { city ->
+                AssistChip(
+                    onClick = { onSetCity(city) },
+                    label = { Text(city) },
+                    leadingIcon = { Text(if (selectedCity == city) "*" else "") }
+                )
+            }
+        }
+
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,

@@ -7,6 +7,12 @@ enum class ReviewCategory {
     VALUE
 }
 
+enum class LanguageOption {
+    ENGLISH,
+    SPANISH,
+    FRENCH
+}
+
 data class Review(
     val id: String,
     val text: String,
@@ -24,6 +30,7 @@ data class DishSentiment(
 data class Restaurant(
     val id: String,
     val name: String,
+    val city: String,
     val cuisine: String,
     val priceLevel: Int,
     val vibeTags: List<String>,

@@ -8,21 +8,36 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.vibevision.model.LanguageOption
 import com.example.vibevision.model.VibePreference
 
 @Composable
 fun BasicProfileScreen(
     preferences: List<VibePreference>,
     isDarkMode: Boolean,
+    isOfflineMode: Boolean,
+    pushNotificationsEnabled: Boolean,
+    language: LanguageOption,
     onToggle: (String) -> Unit,
-    onDarkModeToggle: (Boolean) -> Unit
+    onDarkModeToggle: (Boolean) -> Unit,
+    onOfflineModeToggle: (Boolean) -> Unit,
+    onPushNotificationsToggle: (Boolean) -> Unit,
+    onLanguageChange: (LanguageOption) -> Unit
 ) {
+    var languageExpanded by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -57,6 +72,45 @@ fun BasicProfileScreen(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(text = "Light Mode and Dark Mode")
                     Switch(checked = isDarkMode, onCheckedChange = onDarkModeToggle)
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "Offline Mode")
+                    Switch(checked = isOfflineMode, onCheckedChange = onOfflineModeToggle)
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "Push Notifications")
+                    Switch(checked = pushNotificationsEnabled, onCheckedChange = onPushNotificationsToggle)
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "Multi-Language Support")
+                    Text(text = language.name)
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "Select Language")
+                    Text(text = "Change")
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "")
+                    androidx.compose.material3.Button(onClick = { languageExpanded = true }) {
+                        Text("Open")
+                    }
+                }
+
+                DropdownMenu(expanded = languageExpanded, onDismissRequest = { languageExpanded = false }) {
+                    LanguageOption.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.name) },
+                            onClick = {
+                                onLanguageChange(option)
+                                languageExpanded = false
+                            }
+                        )
+                    }
                 }
             }
         }

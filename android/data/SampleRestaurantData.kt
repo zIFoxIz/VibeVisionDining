@@ -10,6 +10,7 @@ object SampleRestaurantData {
         Restaurant(
             id = "r1",
             name = "Ember & Basil",
+            city = "Phoenix",
             cuisine = "Italian",
             priceLevel = 3,
             vibeTags = listOf("Cozy", "Date Night", "Romantic"),
@@ -29,6 +30,7 @@ object SampleRestaurantData {
         Restaurant(
             id = "r2",
             name = "Citrus Lantern",
+            city = "Las Vegas",
             cuisine = "Asian Fusion",
             priceLevel = 2,
             vibeTags = listOf("Energetic", "Friends", "Modern"),
@@ -48,6 +50,7 @@ object SampleRestaurantData {
         Restaurant(
             id = "r3",
             name = "Willow Market Kitchen",
+            city = "Cleveland",
             cuisine = "American",
             priceLevel = 2,
             vibeTags = listOf("Family", "Casual", "Comfort"),

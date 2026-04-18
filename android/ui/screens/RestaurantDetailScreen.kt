@@ -15,6 +15,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,15 +36,24 @@ import com.example.vibevision.ui.components.EmotionHeatmap
 @Composable
 fun RestaurantDetailScreen(
     restaurant: Restaurant,
+    reviews: List<Review>,
     vibePreferences: List<VibePreference>,
     isFavorite: Boolean,
+    aiSummary: String,
+    timeline: List<String>,
+    selectedShareTemplate: String,
     onFavoriteToggle: () -> Unit,
-    onShareRestaurantCard: () -> Unit
+    onShareRestaurantCard: () -> Unit,
+    onShareTemplateChange: (String) -> Unit,
+    onSubmitReview: (String, Int, ReviewCategory) -> Unit
 ) {
     val vibeMatchScore = calculateVibeMatch(restaurant.vibeTags, vibePreferences)
     var selectedCategory by remember { mutableStateOf("All") }
     var sortOption by remember { mutableStateOf("Highest") }
-    val filteredReviews = filterAndSortReviews(restaurant.reviews, selectedCategory, sortOption)
+    var draftReview by remember { mutableStateOf("") }
+    var draftRating by remember { mutableStateOf("5") }
+    var draftCategory by remember { mutableStateOf(ReviewCategory.FOOD) }
+    val filteredReviews = filterAndSortReviews(reviews, selectedCategory, sortOption)
 
     LazyColumn(
         modifier = Modifier
@@ -53,7 +63,7 @@ fun RestaurantDetailScreen(
     ) {
         item {
             Text(text = "Restaurant Detail", fontWeight = FontWeight.Bold)
-            Text(text = restaurant.name, fontWeight = FontWeight.SemiBold)
+            Text(text = "${restaurant.name} (${restaurant.city})", fontWeight = FontWeight.SemiBold)
             Text(text = "${restaurant.cuisine} • ${"$".repeat(restaurant.priceLevel)}")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onFavoriteToggle) {
@@ -61,6 +71,16 @@ fun RestaurantDetailScreen(
                 }
                 Button(onClick = onShareRestaurantCard) {
                     Text("Share Restaurant Card")
+                }
+            }
+            Text(text = "Social Sharing Templates")
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(listOf("Quick", "Family Plan", "Date Night", "Foodie")) { template ->
+                    AssistChip(
+                        onClick = { onShareTemplateChange(template) },
+                        label = { Text(template) },
+                        leadingIcon = { Text(if (selectedShareTemplate == template) "*" else "") }
+                    )
                 }
             }
         }
@@ -106,8 +126,18 @@ fun RestaurantDetailScreen(
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(text = "AI Sentiment Summary", fontWeight = FontWeight.SemiBold)
-                    val summary = "Most reviews are positive for ${restaurant.name}, with strongest sentiment around ${restaurant.dishSentiments.firstOrNull()?.dishName ?: "top dishes"}."
-                    Text(text = summary)
+                    Text(text = aiSummary)
+                }
+            }
+        }
+
+        item {
+            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(text = "Restaurant Vibe Timeline", fontWeight = FontWeight.SemiBold)
+                    timeline.forEach { point ->
+                        Text(text = "- $point")
+                    }
                 }
             }
         }
@@ -192,6 +222,43 @@ fun RestaurantDetailScreen(
                                 Text(text = review.text)
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        item {
+            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(text = "User Review Submission", fontWeight = FontWeight.SemiBold)
+                    OutlinedTextField(
+                        value = draftReview,
+                        onValueChange = { draftReview = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Write your review") }
+                    )
+                    OutlinedTextField(
+                        value = draftRating,
+                        onValueChange = { draftRating = it.filter { ch -> ch.isDigit() } },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Rating 1-5") }
+                    )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(ReviewCategory.entries) { cat ->
+                            AssistChip(
+                                onClick = { draftCategory = cat },
+                                label = { Text(cat.name) },
+                                leadingIcon = { Text(if (draftCategory == cat) "*" else "") }
+                            )
+                        }
+                    }
+                    Button(onClick = {
+                        val rating = draftRating.toIntOrNull()?.coerceIn(1, 5) ?: 5
+                        onSubmitReview(draftReview, rating, draftCategory)
+                        draftReview = ""
+                        draftRating = "5"
+                    }) {
+                        Text("Submit Review")
                     }
                 }
             }

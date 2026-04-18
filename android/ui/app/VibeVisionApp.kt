@@ -20,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.vibevision.ml.SentimentAnalyzer
 import com.example.vibevision.ui.SentimentAnalysisScreen
 import com.example.vibevision.ui.SentimentViewModel
+import com.example.vibevision.ui.screens.AdvancedAnalyticsDashboardScreen
 import com.example.vibevision.ui.screens.BasicProfileScreen
 import com.example.vibevision.ui.screens.HomeFeedScreen
 import com.example.vibevision.ui.screens.RestaurantDetailScreen
@@ -41,6 +42,7 @@ fun VibeVisionApp(
                     NavItem("Home", state.route == AppRoute.HOME) { appViewModel.navigate(AppRoute.HOME) }
                     NavItem("Search", state.route == AppRoute.SEARCH) { appViewModel.navigate(AppRoute.SEARCH) }
                     NavItem("Analyze", state.route == AppRoute.ANALYZER) { appViewModel.navigate(AppRoute.ANALYZER) }
+                    NavItem("Insights", state.route == AppRoute.INSIGHTS) { appViewModel.navigate(AppRoute.INSIGHTS) }
                     NavItem("Profile", state.route == AppRoute.PROFILE) { appViewModel.navigate(AppRoute.PROFILE) }
                 }
             }
@@ -52,6 +54,8 @@ fun VibeVisionApp(
                         favorites = appViewModel.favoriteRestaurants(),
                         recentlyViewed = appViewModel.recentlyViewedRestaurants(),
                         favoriteIds = state.favoriteRestaurantIds,
+                        recommendations = appViewModel.personalizedRecommendations(),
+                        isOfflineMode = state.isOfflineMode,
                         aiSummary = "Overall trend is positive, with strongest sentiment around food quality and service.",
                         onRestaurantClick = appViewModel::openRestaurantDetail,
                         onFavoriteToggle = appViewModel::toggleFavorite
@@ -60,6 +64,8 @@ fun VibeVisionApp(
                     AppRoute.SEARCH -> RestaurantSearchScreen(
                         query = state.searchQuery,
                         restaurants = appViewModel.filteredRestaurants(),
+                        selectedCity = state.selectedCity,
+                        availableCities = appViewModel.allCities(),
                         availableCuisines = appViewModel.allCuisines(),
                         availablePrices = appViewModel.allPriceLevels(),
                         availableVibes = appViewModel.allVibes(),
@@ -69,6 +75,7 @@ fun VibeVisionApp(
                         showFilterOverlay = state.showFilterOverlay,
                         onQueryChange = appViewModel::updateSearchQuery,
                         onRestaurantClick = appViewModel::openRestaurantDetail,
+                        onSetCity = appViewModel::setCity,
                         onToggleOverlay = { appViewModel.setFilterOverlayVisible(!state.showFilterOverlay) },
                         onToggleCuisine = appViewModel::toggleCuisineFilter,
                         onTogglePrice = appViewModel::togglePriceFilter,
@@ -78,26 +85,52 @@ fun VibeVisionApp(
 
                     AppRoute.ANALYZER -> SentimentAnalysisScreen(viewModel = sentimentViewModel)
 
+                    AppRoute.INSIGHTS -> AdvancedAnalyticsDashboardScreen(
+                        snapshot = appViewModel.analyticsSnapshot(),
+                        recommendations = appViewModel.personalizedRecommendations(),
+                        scrapeStatus = state.lastScrapeStatus,
+                        onSimulateScrape = appViewModel::simulateRealTimeReviewScrape
+                    )
+
                     AppRoute.PROFILE -> BasicProfileScreen(
                         preferences = state.vibePreferences,
                         isDarkMode = state.isDarkMode,
+                        isOfflineMode = state.isOfflineMode,
+                        pushNotificationsEnabled = state.pushNotificationsEnabled,
+                        language = state.language,
                         onToggle = appViewModel::toggleVibe,
-                        onDarkModeToggle = appViewModel::setDarkMode
+                        onDarkModeToggle = appViewModel::setDarkMode,
+                        onOfflineModeToggle = appViewModel::setOfflineMode,
+                        onPushNotificationsToggle = appViewModel::setPushNotifications,
+                        onLanguageChange = appViewModel::setLanguage
                     )
 
                     AppRoute.DETAIL -> state.selectedRestaurant?.let { restaurant ->
                         RestaurantDetailScreen(
                             restaurant = restaurant,
+                            reviews = appViewModel.reviewsForRestaurant(restaurant),
                             vibePreferences = state.vibePreferences,
                             isFavorite = state.favoriteRestaurantIds.contains(restaurant.id),
+                            aiSummary = appViewModel.aiGeneratedSummary(restaurant),
+                            timeline = appViewModel.restaurantVibeTimeline(restaurant),
+                            selectedShareTemplate = state.selectedShareTemplate,
                             onFavoriteToggle = { appViewModel.toggleFavorite(restaurant.id) },
                             onShareRestaurantCard = {
-                                val text = "${restaurant.name} • ${restaurant.cuisine} • vibe: ${restaurant.vibeTags.joinToString()}"
+                                val text = when (state.selectedShareTemplate) {
+                                    "Family Plan" -> "Family pick: ${restaurant.name} in ${restaurant.city}. Comfort vibe and menu picks include ${restaurant.menuPreview.take(2).joinToString()}."
+                                    "Date Night" -> "Date night option: ${restaurant.name}. Mood: ${restaurant.vibeTags.joinToString()}"
+                                    "Foodie" -> "Foodie alert: ${restaurant.name} top dishes ${restaurant.menuPreview.take(3).joinToString()}"
+                                    else -> "${restaurant.name} • ${restaurant.city} • ${restaurant.cuisine} • vibe: ${restaurant.vibeTags.joinToString()}"
+                                }
                                 val intent = Intent(Intent.ACTION_SEND).apply {
                                     type = "text/plain"
                                     putExtra(Intent.EXTRA_TEXT, text)
                                 }
                                 context.startActivity(Intent.createChooser(intent, "Share restaurant"))
+                            },
+                            onShareTemplateChange = appViewModel::setShareTemplate,
+                            onSubmitReview = { text, rating, category ->
+                                appViewModel.submitUserReview(restaurant.id, text, rating, category)
                             }
                         )
                     } ?: HomeFeedScreen(
@@ -105,6 +138,8 @@ fun VibeVisionApp(
                         favorites = appViewModel.favoriteRestaurants(),
                         recentlyViewed = appViewModel.recentlyViewedRestaurants(),
                         favoriteIds = state.favoriteRestaurantIds,
+                        recommendations = appViewModel.personalizedRecommendations(),
+                        isOfflineMode = state.isOfflineMode,
                         aiSummary = "Select a restaurant to see detailed sentiment intelligence.",
                         onRestaurantClick = appViewModel::openRestaurantDetail,
                         onFavoriteToggle = appViewModel::toggleFavorite
