@@ -39,13 +39,13 @@ fun DishCard(dish: DishSentiment, variant: DishCardVariant = DishCardVariant.STA
             Text(text = "$total mentions")
 
             Text(text = "Positive ${String.format("%.0f", positiveRatio * 100)}%")
-            LinearProgressIndicator(progress = { positiveRatio }, modifier = Modifier.fillMaxWidth())
+            LinearProgressIndicator(progress = positiveRatio, modifier = Modifier.fillMaxWidth())
 
             Text(text = "Neutral ${String.format("%.0f", neutralRatio * 100)}%")
-            LinearProgressIndicator(progress = { neutralRatio }, modifier = Modifier.fillMaxWidth())
+            LinearProgressIndicator(progress = neutralRatio, modifier = Modifier.fillMaxWidth())
 
             Text(text = "Negative ${String.format("%.0f", negativeRatio * 100)}%")
-            LinearProgressIndicator(progress = { negativeRatio }, modifier = Modifier.fillMaxWidth())
+            LinearProgressIndicator(progress = negativeRatio, modifier = Modifier.fillMaxWidth())
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(text = "POS ${dish.positive}")

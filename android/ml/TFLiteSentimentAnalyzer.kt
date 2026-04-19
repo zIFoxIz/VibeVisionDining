@@ -11,7 +11,13 @@ class TFLiteSentimentAnalyzer(
     private val englishStopwords: Set<String>
 ) : ReviewSentimentPredictor {
 
-    private val interpreter: Interpreter = Interpreter(modelBytes)
+    private val interpreter: Interpreter = Interpreter(
+        ByteBuffer
+            .allocateDirect(modelBytes.size)
+            .order(ByteOrder.nativeOrder())
+            .put(modelBytes)
+            .apply { rewind() }
+    )
 
     private fun preprocessText(text: String): List<String> {
         return text

@@ -41,7 +41,7 @@ fun VibeMatchSetupScreen(
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(text = "Preference Coverage", fontWeight = FontWeight.SemiBold)
-                    LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+                    LinearProgressIndicator(progress = progress, modifier = Modifier.fillMaxWidth())
                     Text(text = "$enabled of ${preferences.size} vibes enabled")
                 }
             }
