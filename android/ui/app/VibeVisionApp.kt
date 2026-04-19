@@ -3,10 +3,7 @@ package com.example.vibevision.ui.app
 import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -21,8 +18,11 @@ import androidx.navigation.compose.rememberNavController
 import com.example.vibevision.ml.SentimentAnalyzer
 import com.example.vibevision.ui.SentimentAnalysisScreen
 import com.example.vibevision.ui.SentimentViewModel
+import com.example.vibevision.ui.components.AppBottomNavigationBar
+import com.example.vibevision.ui.components.NavDestinationItem
 import com.example.vibevision.ui.screens.AdvancedAnalyticsDashboardScreen
 import com.example.vibevision.ui.screens.BasicProfileScreen
+import com.example.vibevision.ui.screens.DishSentimentScreen
 import com.example.vibevision.ui.screens.HomeFeedScreen
 import com.example.vibevision.ui.screens.RestaurantDetailScreen
 import com.example.vibevision.ui.screens.RestaurantSearchScreen
@@ -37,6 +37,7 @@ private sealed class AppDestination(val route: String, val label: String) {
     data object Profile : AppDestination("profile", "Profile")
     data object Detail : AppDestination("detail", "Detail")
     data object VibeSetup : AppDestination("vibe_setup", "Vibes")
+    data object DishSentiment : AppDestination("dish_sentiment", "Dish")
 }
 
 private fun AppRoute.toDestination(): AppDestination = when (this) {
@@ -56,6 +57,7 @@ private fun AppDestination.toAppRoute(): AppRoute = when (this) {
     AppDestination.Profile -> AppRoute.PROFILE
     AppDestination.Detail -> AppRoute.DETAIL
     AppDestination.VibeSetup -> AppRoute.PROFILE
+    AppDestination.DishSentiment -> AppRoute.DETAIL
 }
 
 @Composable
@@ -82,22 +84,19 @@ fun VibeVisionApp(
     VibeVisionTheme(darkTheme = state.isDarkMode) {
         Scaffold(
             bottomBar = {
-                NavigationBar {
-                    primaryDestinations.forEach { destination ->
-                        NavItem(
-                            label = destination.label,
-                            selected = currentRoute == destination.route,
-                            onClick = {
-                                navController.navigate(destination.route) {
-                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                                appViewModel.navigate(destination.toAppRoute())
-                            }
-                        )
+                AppBottomNavigationBar(
+                    items = primaryDestinations.map { NavDestinationItem(route = it.route, label = it.label) },
+                    selectedRoute = currentRoute,
+                    onNavigate = { item ->
+                        val destination = primaryDestinations.first { it.route == item.route }
+                        navController.navigate(destination.route) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                        appViewModel.navigate(destination.toAppRoute())
                     }
-                }
+                )
             }
         ) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding)) {
@@ -212,6 +211,9 @@ fun VibeVisionApp(
                                     context.startActivity(Intent.createChooser(intent, "Share restaurant"))
                                 },
                                 onShareTemplateChange = appViewModel::setShareTemplate,
+                                onOpenDishSentiment = {
+                                    navController.navigate(AppDestination.DishSentiment.route)
+                                },
                                 onSubmitReview = { text, rating, category ->
                                     appViewModel.submitUserReview(restaurant.id, text, rating, category)
                                 }
@@ -231,18 +233,27 @@ fun VibeVisionApp(
                             onFavoriteToggle = appViewModel::toggleFavorite
                         )
                     }
+
+                    composable(AppDestination.DishSentiment.route) {
+                        state.selectedRestaurant?.let { restaurant ->
+                            DishSentimentScreen(restaurant = restaurant)
+                        } ?: HomeFeedScreen(
+                            restaurants = state.restaurants,
+                            favorites = appViewModel.favoriteRestaurants(),
+                            recentlyViewed = appViewModel.recentlyViewedRestaurants(),
+                            favoriteIds = state.favoriteRestaurantIds,
+                            recommendations = appViewModel.personalizedRecommendations(),
+                            isOfflineMode = state.isOfflineMode,
+                            aiSummary = "Select a restaurant to view dish sentiment details.",
+                            onRestaurantClick = { selected ->
+                                appViewModel.openRestaurantDetail(selected)
+                                navController.navigate(AppDestination.Detail.route)
+                            },
+                            onFavoriteToggle = appViewModel::toggleFavorite
+                        )
+                    }
                 }
             }
         }
     }
-}
-
-@Composable
-private fun NavItem(label: String, selected: Boolean, onClick: () -> Unit) {
-    NavigationBarItem(
-        selected = selected,
-        onClick = onClick,
-        icon = { Text(text = label.take(1)) },
-        label = { Text(text = label) }
-    )
 }

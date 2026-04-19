@@ -15,8 +15,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.vibevision.model.DishSentiment
 
+enum class DishCardVariant {
+    STANDARD,
+    HIGHLIGHT
+}
+
 @Composable
-fun DishCard(dish: DishSentiment) {
+fun DishCard(dish: DishSentiment, variant: DishCardVariant = DishCardVariant.STANDARD) {
     val total = (dish.positive + dish.neutral + dish.negative).coerceAtLeast(1)
     val positiveRatio = dish.positive.toFloat() / total.toFloat()
     val neutralRatio = dish.neutral.toFloat() / total.toFloat()
@@ -28,6 +33,9 @@ fun DishCard(dish: DishSentiment) {
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(text = dish.dishName, fontWeight = FontWeight.SemiBold)
+            if (variant == DishCardVariant.HIGHLIGHT) {
+                SentimentIcon(sentiment = if (dish.positive >= dish.negative) "positive" else "negative")
+            }
             Text(text = "$total mentions")
 
             Text(text = "Positive ${String.format("%.0f", positiveRatio * 100)}%")

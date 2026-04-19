@@ -31,7 +31,11 @@ import com.example.vibevision.model.Review
 import com.example.vibevision.model.ReviewCategory
 import com.example.vibevision.model.VibePreference
 import com.example.vibevision.ui.components.DishCard
+import com.example.vibevision.ui.components.DishCardVariant
 import com.example.vibevision.ui.components.EmotionHeatmap
+import com.example.vibevision.ui.components.ReviewCard
+import com.example.vibevision.ui.components.ReviewCardVariant
+import com.example.vibevision.ui.components.VibePreferenceChips
 
 @Composable
 fun RestaurantDetailScreen(
@@ -48,6 +52,7 @@ fun RestaurantDetailScreen(
     onFavoriteToggle: () -> Unit,
     onShareRestaurantCard: () -> Unit,
     onShareTemplateChange: (String) -> Unit,
+    onOpenDishSentiment: () -> Unit,
     onSubmitReview: (String, Int, ReviewCategory) -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf("All") }
@@ -74,6 +79,9 @@ fun RestaurantDetailScreen(
                 Button(onClick = onShareRestaurantCard) {
                     Text("Share Restaurant Card")
                 }
+            }
+            Button(onClick = onOpenDishSentiment) {
+                Text("Open Dish Sentiment Dashboard")
             }
             Text(text = "Social Sharing Templates")
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -121,6 +129,7 @@ fun RestaurantDetailScreen(
                     Text(text = "Vibe Match System", fontWeight = FontWeight.SemiBold)
                     Text(text = "Current match: ${String.format("%.0f", vibeMatchScore * 100)}%")
                     Text(text = vibeMatchDescription)
+                    VibePreferenceChips(preferences = vibePreferences, onToggle = {})
                 }
             }
         }
@@ -159,7 +168,7 @@ fun RestaurantDetailScreen(
         }
 
         items(restaurant.dishSentiments) { dish ->
-            DishCard(dish = dish)
+            DishCard(dish = dish, variant = DishCardVariant.HIGHLIGHT)
         }
 
         item {
@@ -211,12 +220,7 @@ fun RestaurantDetailScreen(
                     }
 
                     filteredReviews.forEach { review ->
-                        Card(elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
-                            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(text = "${review.rating}/5 • ${review.category.name}", fontWeight = FontWeight.SemiBold)
-                                Text(text = review.text)
-                            }
-                        }
+                        ReviewCard(review = review, variant = ReviewCardVariant.DETAILED)
                     }
                 }
             }
