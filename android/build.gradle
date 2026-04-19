@@ -13,6 +13,7 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildFeatures {
@@ -82,5 +83,8 @@ dependencies {
     
     // Testing
     testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test:runner:1.5.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.compose.ui:ui-test-junit4:1.5.4'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest:1.5.4'
 }
