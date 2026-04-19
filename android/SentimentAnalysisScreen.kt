@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.vibevision.ml.SentimentAnalyzer
+import com.example.vibevision.ml.PredictionResult
 
 @Composable
 fun SentimentAnalysisScreen(viewModel: SentimentViewModel) {
@@ -110,14 +110,14 @@ fun SentimentAnalysisScreen(viewModel: SentimentViewModel) {
 
         // Results
         uiState.sentimentResult?.let { result ->
-            ResultCard(result)
+            ResultCard(result, uiState.sentimentEmoji)
             SentimentChartCard(result)
         }
     }
 }
 
 @Composable
-fun ResultCard(result: SentimentAnalyzer.PredictionResult) {
+fun ResultCard(result: PredictionResult, emoji: String?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -138,6 +138,9 @@ fun ResultCard(result: SentimentAnalyzer.PredictionResult) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(text = "Sentiment:", fontWeight = FontWeight.SemiBold)
+                if (emoji != null) {
+                    Text(text = emoji, fontSize = 24.sp)
+                }
                 
                 val backgroundColor = when (result.sentiment) {
                     "positive" -> Color(0xFF4CAF50)
@@ -209,7 +212,7 @@ fun ResultCard(result: SentimentAnalyzer.PredictionResult) {
 }
 
 @Composable
-fun SentimentChartCard(result: SentimentAnalyzer.PredictionResult) {
+fun SentimentChartCard(result: PredictionResult) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),

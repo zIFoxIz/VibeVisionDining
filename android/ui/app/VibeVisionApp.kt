@@ -15,7 +15,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.vibevision.ml.SentimentAnalyzer
+import com.example.vibevision.ml.ReviewSentimentPredictor
 import com.example.vibevision.ui.SentimentAnalysisScreen
 import com.example.vibevision.ui.SentimentViewModel
 import com.example.vibevision.ui.components.AppBottomNavigationBar
@@ -62,7 +62,7 @@ private fun AppDestination.toAppRoute(): AppRoute = when (this) {
 
 @Composable
 fun VibeVisionApp(
-    analyzer: SentimentAnalyzer,
+    analyzer: ReviewSentimentPredictor,
     appViewModel: AppViewModel = viewModel()
 ) {
     val state by appViewModel.uiState.collectAsStateWithLifecycle()

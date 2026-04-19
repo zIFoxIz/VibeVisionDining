@@ -53,4 +53,5 @@ with open(minimal_file, 'w') as f:
 print(f"Minimal model exported to {minimal_file}")
 print(f"File size: {len(json.dumps(minimal_model)) / 1024:.2f} KB")
 print(f"Top 500 features for faster inference")
+print("For TensorFlow Lite conversion, run: python convert_to_tflite.py")
 print("\nExport complete!")

@@ -1,19 +1,21 @@
 package com.example.vibevision.ui
 
 import androidx.lifecycle.ViewModel
+import com.example.vibevision.domain.EmojiSentimentMapper
+import com.example.vibevision.ml.ReviewSentimentPredictor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import com.example.vibevision.ml.SentimentAnalyzer
 
 data class SentimentState(
     val reviewText: String = "",
-    val sentimentResult: SentimentAnalyzer.PredictionResult? = null,
+    val sentimentResult: com.example.vibevision.ml.PredictionResult? = null,
+    val sentimentEmoji: String? = null,
     val isAnalyzing: Boolean = false,
     val error: String? = null
 )
 
-class SentimentViewModel(private val analyzer: SentimentAnalyzer) : ViewModel() {
+class SentimentViewModel(private val analyzer: ReviewSentimentPredictor) : ViewModel() {
     
     private val _uiState = MutableStateFlow(SentimentState())
     val uiState: StateFlow<SentimentState> = _uiState.asStateFlow()
@@ -35,9 +37,11 @@ class SentimentViewModel(private val analyzer: SentimentAnalyzer) : ViewModel() 
             _uiState.value = _uiState.value.copy(isAnalyzing = true, error = null)
             
             val result = analyzer.predict(_uiState.value.reviewText)
+            val emoji = EmojiSentimentMapper.emojiFor(result.sentiment, result.confidence)
             
             _uiState.value = _uiState.value.copy(
                 sentimentResult = result,
+                sentimentEmoji = emoji,
                 isAnalyzing = false
             )
         } catch (e: Exception) {
@@ -49,6 +53,6 @@ class SentimentViewModel(private val analyzer: SentimentAnalyzer) : ViewModel() 
     }
 
     fun clearResult() {
-        _uiState.value = _uiState.value.copy(sentimentResult = null, error = null)
+        _uiState.value = _uiState.value.copy(sentimentResult = null, sentimentEmoji = null, error = null)
     }
 }

@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import com.example.vibevision.data.repo.RestaurantRepository
 import com.example.vibevision.di.AppContainer
 import com.example.vibevision.domain.HeatmapCalculator
+import com.example.vibevision.domain.DishSentimentAggregate
+import com.example.vibevision.domain.RestaurantSentimentAggregate
+import com.example.vibevision.domain.SentimentAggregation
 import com.example.vibevision.domain.VibeMatchEngine
 import com.example.vibevision.model.LanguageOption
 import com.example.vibevision.model.Restaurant
@@ -164,7 +167,7 @@ class AppViewModel(
     }
 
     fun simulateRealTimeReviewScrape() {
-        _uiState.value = _uiState.value.copy(lastScrapeStatus = repository.scrapeReviewStatus())
+        _uiState.value = _uiState.value.copy(lastScrapeStatus = repository.scrapeReviewStatus(forceRefresh = true))
     }
 
     fun submitUserReview(restaurantId: String, text: String, rating: Int, category: ReviewCategory) {
@@ -256,6 +259,17 @@ class AppViewModel(
     fun heatmapForRestaurant(restaurant: Restaurant): Map<String, Float> {
         val score = vibeMatchScore(restaurant)
         return HeatmapCalculator.compute(reviewsForRestaurant(restaurant), score)
+    }
+
+    fun dishSentimentAggregation(restaurant: Restaurant): Map<String, DishSentimentAggregate> {
+        return restaurant.dishSentiments.associate { dish ->
+            dish.dishName to SentimentAggregation.aggregateDish(dish)
+        }
+    }
+
+    fun restaurantSentimentAggregation(restaurant: Restaurant): RestaurantSentimentAggregate {
+        val reviews = reviewsForRestaurant(restaurant)
+        return repository.aggregateRestaurantSentiment(restaurant, reviews)
     }
 
     fun aiGeneratedSummary(restaurant: Restaurant): String {

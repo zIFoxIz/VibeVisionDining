@@ -1,6 +1,7 @@
 package com.example.vibevision.di
 
 import com.example.vibevision.data.SampleRestaurantData
+import com.example.vibevision.data.cache.MemoryCache
 import com.example.vibevision.data.local.InMemoryLocalDatabase
 import com.example.vibevision.data.remote.FakeRestaurantApiService
 import com.example.vibevision.data.repo.RestaurantRepository
@@ -14,10 +15,15 @@ object AppContainer {
         FakeRestaurantApiService()
     }
 
+    private val memoryCache by lazy {
+        MemoryCache(ttlMs = 180_000L)
+    }
+
     val restaurantRepository: RestaurantRepository by lazy {
         RestaurantRepository(
             api = apiService,
-            localDatabase = localDatabase
+            localDatabase = localDatabase,
+            cache = memoryCache
         )
     }
 }

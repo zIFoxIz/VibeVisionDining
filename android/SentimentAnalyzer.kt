@@ -11,14 +11,7 @@ import kotlin.math.exp
 class SentimentAnalyzer(
     private val modelJson: JsonObject,
     private val englishStopwords: Set<String>
-) {
-
-    data class PredictionResult(
-        val sentiment: String,
-        val label: Int,
-        val confidence: Float,
-        val scores: Map<String, Float>
-    )
+) : ReviewSentimentPredictor {
 
     private val classes: List<String> = modelJson.getAsJsonArray("classes").map { it.asString }
     private val coef: Array<FloatArray> = modelJson.getAsJsonArray("coef").map { row ->
@@ -62,7 +55,7 @@ class SentimentAnalyzer(
     /**
      * Predict sentiment from text
      */
-    fun predict(text: String): PredictionResult {
+    override fun predict(text: String): PredictionResult {
         val tokens = preprocessText(text)
         if (tokens.isEmpty()) {
             return PredictionResult(
