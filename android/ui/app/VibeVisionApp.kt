@@ -3,12 +3,26 @@ package com.example.vibevision.ui.app
 import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -20,6 +34,7 @@ import com.example.vibevision.ui.SentimentAnalysisScreen
 import com.example.vibevision.ui.SentimentViewModel
 import com.example.vibevision.ui.components.AppBottomNavigationBar
 import com.example.vibevision.ui.components.NavDestinationItem
+import com.example.vibevision.ui.screens.AccountSettingsScreen
 import com.example.vibevision.ui.screens.AdvancedAnalyticsDashboardScreen
 import com.example.vibevision.ui.screens.BasicProfileScreen
 import com.example.vibevision.ui.screens.DishSentimentScreen
@@ -28,6 +43,7 @@ import com.example.vibevision.ui.screens.RestaurantDetailScreen
 import com.example.vibevision.ui.screens.RestaurantSearchScreen
 import com.example.vibevision.ui.screens.VibeMatchSetupScreen
 import com.example.vibevision.ui.theme.VibeVisionTheme
+import kotlinx.coroutines.launch
 
 private sealed class AppDestination(val route: String, val label: String) {
     data object Home : AppDestination("home", "Home")
@@ -35,6 +51,7 @@ private sealed class AppDestination(val route: String, val label: String) {
     data object Analyzer : AppDestination("analyzer", "Analyze")
     data object Insights : AppDestination("insights", "Insights")
     data object Profile : AppDestination("profile", "Profile")
+    data object AccountSettings : AppDestination("account_settings", "Account Settings")
     data object Detail : AppDestination("detail", "Detail")
     data object VibeSetup : AppDestination("vibe_setup", "Vibes")
     data object DishSentiment : AppDestination("dish_sentiment", "Dish")
@@ -55,11 +72,13 @@ private fun AppDestination.toAppRoute(): AppRoute = when (this) {
     AppDestination.Analyzer -> AppRoute.ANALYZER
     AppDestination.Insights -> AppRoute.INSIGHTS
     AppDestination.Profile -> AppRoute.PROFILE
+    AppDestination.AccountSettings -> AppRoute.PROFILE
     AppDestination.Detail -> AppRoute.DETAIL
     AppDestination.VibeSetup -> AppRoute.PROFILE
     AppDestination.DishSentiment -> AppRoute.DETAIL
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VibeVisionApp(
     analyzer: ReviewSentimentPredictor,
@@ -69,6 +88,8 @@ fun VibeVisionApp(
     val sentimentViewModel = remember(analyzer) { SentimentViewModel(analyzer) }
     val context = LocalContext.current
     val navController = rememberNavController()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
     val startDestination = remember { state.route.toDestination().route }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -81,25 +102,86 @@ fun VibeVisionApp(
         AppDestination.Profile
     )
 
+    val drawerDestinations = listOf(
+        AppDestination.Home,
+        AppDestination.Search,
+        AppDestination.Analyzer,
+        AppDestination.Insights,
+        AppDestination.Profile,
+        AppDestination.AccountSettings
+    )
+
+    val routeLabels = mapOf(
+        AppDestination.Home.route to AppDestination.Home.label,
+        AppDestination.Search.route to AppDestination.Search.label,
+        AppDestination.Analyzer.route to AppDestination.Analyzer.label,
+        AppDestination.Insights.route to AppDestination.Insights.label,
+        AppDestination.Profile.route to AppDestination.Profile.label,
+        AppDestination.AccountSettings.route to AppDestination.AccountSettings.label,
+        AppDestination.Detail.route to "Restaurant Detail",
+        AppDestination.VibeSetup.route to "Vibe Setup",
+        AppDestination.DishSentiment.route to "Dish Sentiment"
+    )
+
     VibeVisionTheme(darkTheme = state.isDarkMode) {
-        Scaffold(
-            bottomBar = {
-                AppBottomNavigationBar(
-                    items = primaryDestinations.map { NavDestinationItem(route = it.route, label = it.label) },
-                    selectedRoute = currentRoute,
-                    onNavigate = { item ->
-                        val destination = primaryDestinations.first { it.route == item.route }
-                        navController.navigate(destination.route) {
-                            popUpTo(navController.graph.startDestinationId) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                        appViewModel.navigate(destination.toAppRoute())
-                    }
-                )
+        fun navigateTo(destination: AppDestination) {
+            navController.navigate(destination.route) {
+                if (primaryDestinations.contains(destination)) {
+                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                    restoreState = true
+                }
+                launchSingleTop = true
             }
-        ) { innerPadding ->
-            Box(modifier = Modifier.padding(innerPadding)) {
+
+            if (primaryDestinations.contains(destination)) {
+                appViewModel.navigate(destination.toAppRoute())
+            }
+
+            scope.launch { drawerState.close() }
+        }
+
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet {
+                    Text(
+                        text = "VibeVision Dining",
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    drawerDestinations.forEach { destination ->
+                        NavigationDrawerItem(
+                            label = { Text(destination.label) },
+                            selected = currentRoute == destination.route,
+                            onClick = { navigateTo(destination) },
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+        ) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text(routeLabels[currentRoute] ?: "VibeVision Dining") },
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(imageVector = Icons.Filled.Menu, contentDescription = "Open menu")
+                            }
+                        }
+                    )
+                },
+                bottomBar = {
+                    AppBottomNavigationBar(
+                        items = primaryDestinations.map { NavDestinationItem(route = it.route, label = it.label) },
+                        selectedRoute = currentRoute,
+                        onNavigate = { item ->
+                            val destination = primaryDestinations.first { it.route == item.route }
+                            navigateTo(destination)
+                        }
+                    )
+                }
+            ) { innerPadding ->
+                Box(modifier = Modifier.padding(innerPadding)) {
                 NavHost(navController = navController, startDestination = startDestination) {
                     composable(AppDestination.Home.route) {
                         HomeFeedScreen(
@@ -131,6 +213,8 @@ fun VibeVisionApp(
                             selectedCuisines = state.selectedCuisineFilters,
                             selectedPrices = state.selectedPriceFilters,
                             selectedVibes = state.selectedVibeFilters,
+                            isLoading = state.isSearchLoading,
+                            errorMessage = state.searchErrorMessage,
                             showFilterOverlay = state.showFilterOverlay,
                             onQueryChange = appViewModel::updateSearchQuery,
                             onRestaurantClick = { restaurant ->
@@ -139,11 +223,15 @@ fun VibeVisionApp(
                             },
                             onFavoriteToggle = appViewModel::toggleFavorite,
                             onSetCity = appViewModel::setCity,
+                            onSearchNow = appViewModel::searchByCurrentFilters,
+                            onSearchNearMe = appViewModel::searchNearby,
+                            onClearError = appViewModel::clearSearchError,
                             onToggleOverlay = { appViewModel.setFilterOverlayVisible(!state.showFilterOverlay) },
                             onToggleCuisine = appViewModel::toggleCuisineFilter,
                             onTogglePrice = appViewModel::togglePriceFilter,
                             onToggleVibe = appViewModel::toggleVibeFilter,
-                            onClearFilters = appViewModel::clearAllFilters
+                            onClearFilters = appViewModel::clearAllFilters,
+                            onShowAllRestaurants = appViewModel::resetSearch
                         )
                     }
 
@@ -167,12 +255,33 @@ fun VibeVisionApp(
                             isOfflineMode = state.isOfflineMode,
                             pushNotificationsEnabled = state.pushNotificationsEnabled,
                             language = state.language,
+                            profileName = state.userProfile.name,
+                            profileAddress = state.userProfile.address,
+                            profilePhone = state.userProfile.phone,
+                            profileEmail = state.userProfile.email,
+                            profileSavedMessage = state.profileSavedMessage,
                             onToggle = appViewModel::toggleVibe,
                             onDarkModeToggle = appViewModel::setDarkMode,
                             onOfflineModeToggle = appViewModel::setOfflineMode,
                             onPushNotificationsToggle = appViewModel::setPushNotifications,
                             onLanguageChange = appViewModel::setLanguage,
+                            onNameChange = appViewModel::setProfileName,
+                            onAddressChange = appViewModel::setProfileAddress,
+                            onPhoneChange = appViewModel::setProfilePhone,
+                            onEmailChange = appViewModel::setProfileEmail,
+                            onSaveProfile = appViewModel::saveUserProfile,
+                            onDismissSavedMessage = appViewModel::clearProfileSavedMessage,
                             onOpenVibeSetup = { navController.navigate(AppDestination.VibeSetup.route) }
+                        )
+                    }
+
+                    composable(AppDestination.AccountSettings.route) {
+                        AccountSettingsScreen(
+                            email = state.userProfile.email,
+                            accountActionMessage = state.accountActionMessage,
+                            onChangePassword = appViewModel::changePassword,
+                            onSignOut = appViewModel::signOut,
+                            onDismissMessage = appViewModel::dismissAccountActionMessage
                         )
                     }
 
@@ -254,6 +363,7 @@ fun VibeVisionApp(
                     }
                 }
             }
+        }
         }
     }
 }

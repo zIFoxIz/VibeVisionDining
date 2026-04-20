@@ -1,6 +1,7 @@
 package com.example.vibevision.ui.app
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.vibevision.data.repo.RestaurantRepository
 import com.example.vibevision.di.AppContainer
 import com.example.vibevision.domain.HeatmapCalculator
@@ -12,10 +13,15 @@ import com.example.vibevision.model.LanguageOption
 import com.example.vibevision.model.Restaurant
 import com.example.vibevision.model.Review
 import com.example.vibevision.model.ReviewCategory
+import com.example.vibevision.model.UserProfile
 import com.example.vibevision.model.VibePreference
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 enum class AppRoute {
     HOME,
@@ -50,7 +56,12 @@ data class AppState(
     val isOfflineMode: Boolean = false,
     val pushNotificationsEnabled: Boolean = false,
     val language: LanguageOption = LanguageOption.ENGLISH,
+    val userProfile: UserProfile = UserProfile(),
+    val profileSavedMessage: String? = null,
+    val accountActionMessage: String? = null,
     val selectedShareTemplate: String = "Quick",
+    val isSearchLoading: Boolean = false,
+    val searchErrorMessage: String? = null,
     val lastScrapeStatus: String = "Never run",
     val userSubmittedReviews: Map<String, List<Review>> = emptyMap(),
     val vibePreferences: List<VibePreference> = listOf(
@@ -67,14 +78,36 @@ class AppViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AppState())
     val uiState: StateFlow<AppState> = _uiState.asStateFlow()
+    private var searchJob: Job? = null
+    private val knownCityChips = listOf(
+        "All", "New York", "Los Angeles", "Chicago", "Houston", "Phoenix",
+        "Philadelphia", "San Antonio", "San Diego", "Dallas", "Austin", "San Jose"
+    )
 
     init {
-        val restaurants = repository.loadRestaurants()
-        _uiState.value = _uiState.value.copy(
-            restaurants = restaurants,
-            favoriteRestaurantIds = repository.getFavoriteIds(),
-            userSubmittedReviews = repository.getUserReviews()
-        )
+        val savedProfile = runCatching { AppContainer.userProfileStorage.loadProfile() }
+            .getOrDefault(UserProfile())
+
+        viewModelScope.launch {
+            runCatching {
+                repository.loadRestaurants(forceRefresh = false)
+            }.onSuccess { restaurants ->
+                _uiState.value = _uiState.value.copy(
+                    restaurants = restaurants,
+                    favoriteRestaurantIds = repository.getFavoriteIds(),
+                    userSubmittedReviews = repository.getUserReviews(),
+                    userProfile = savedProfile,
+                    searchErrorMessage = null
+                )
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    favoriteRestaurantIds = repository.getFavoriteIds(),
+                    userSubmittedReviews = repository.getUserReviews(),
+                    userProfile = savedProfile,
+                    searchErrorMessage = error.message ?: "Unable to load restaurants right now."
+                )
+            }
+        }
     }
 
     fun navigate(route: AppRoute) {
@@ -96,10 +129,28 @@ class AppViewModel(
 
     fun updateSearchQuery(query: String) {
         _uiState.value = _uiState.value.copy(searchQuery = query)
+        triggerSearchDebounced()
     }
 
     fun setCity(city: String) {
         _uiState.value = _uiState.value.copy(selectedCity = city)
+        triggerSearchDebounced()
+    }
+
+    fun searchByCurrentFilters() {
+        viewModelScope.launch {
+            performRemoteSearch()
+        }
+    }
+
+    fun searchNearby(latitude: Double, longitude: Double) {
+        viewModelScope.launch {
+            performRemoteSearch(latitude = latitude, longitude = longitude)
+        }
+    }
+
+    fun clearSearchError() {
+        _uiState.value = _uiState.value.copy(searchErrorMessage = null)
     }
 
     fun toggleVibe(vibe: String) {
@@ -146,6 +197,19 @@ class AppViewModel(
         )
     }
 
+    fun resetSearch() {
+        _uiState.value = _uiState.value.copy(
+            searchQuery = "",
+            selectedCity = "All",
+            selectedCuisineFilters = emptySet(),
+            selectedPriceFilters = emptySet(),
+            selectedVibeFilters = emptySet(),
+            showFilterOverlay = false,
+            searchErrorMessage = null
+        )
+        searchByCurrentFilters()
+    }
+
     fun setDarkMode(enabled: Boolean) {
         _uiState.value = _uiState.value.copy(isDarkMode = enabled)
     }
@@ -162,12 +226,92 @@ class AppViewModel(
         _uiState.value = _uiState.value.copy(language = language)
     }
 
+    fun changePassword() {
+        val fallbackEmail = _uiState.value.userProfile.email.ifBlank {
+            FirebaseAuth.getInstance().currentUser?.email.orEmpty()
+        }
+
+        if (fallbackEmail.isBlank()) {
+            _uiState.value = _uiState.value.copy(
+                accountActionMessage = "Enter your email in Profile first to receive a reset link."
+            )
+            return
+        }
+
+        FirebaseAuth.getInstance().sendPasswordResetEmail(fallbackEmail)
+            .addOnSuccessListener {
+                _uiState.value = _uiState.value.copy(
+                    accountActionMessage = "Password reset email sent to $fallbackEmail."
+                )
+            }
+            .addOnFailureListener { error ->
+                _uiState.value = _uiState.value.copy(
+                    accountActionMessage = error.message ?: "Unable to send reset email right now."
+                )
+            }
+    }
+
+    fun signOut() {
+        runCatching { FirebaseAuth.getInstance().signOut() }
+        _uiState.value = _uiState.value.copy(
+            accountActionMessage = "Signed out."
+        )
+    }
+
+    fun dismissAccountActionMessage() {
+        _uiState.value = _uiState.value.copy(accountActionMessage = null)
+    }
+
+    fun setProfileName(name: String) {
+        _uiState.value = _uiState.value.copy(
+            userProfile = _uiState.value.userProfile.copy(name = name),
+            profileSavedMessage = null
+        )
+    }
+
+    fun setProfileAddress(address: String) {
+        _uiState.value = _uiState.value.copy(
+            userProfile = _uiState.value.userProfile.copy(address = address),
+            profileSavedMessage = null
+        )
+    }
+
+    fun setProfilePhone(phone: String) {
+        _uiState.value = _uiState.value.copy(
+            userProfile = _uiState.value.userProfile.copy(phone = phone),
+            profileSavedMessage = null
+        )
+    }
+
+    fun setProfileEmail(email: String) {
+        _uiState.value = _uiState.value.copy(
+            userProfile = _uiState.value.userProfile.copy(email = email),
+            profileSavedMessage = null
+        )
+    }
+
+    fun saveUserProfile() {
+        val profile = _uiState.value.userProfile
+        runCatching {
+            AppContainer.userProfileStorage.saveProfile(profile)
+        }
+        _uiState.value = _uiState.value.copy(profileSavedMessage = "Profile saved")
+    }
+
+    fun clearProfileSavedMessage() {
+        _uiState.value = _uiState.value.copy(profileSavedMessage = null)
+    }
+
     fun setShareTemplate(template: String) {
         _uiState.value = _uiState.value.copy(selectedShareTemplate = template)
     }
 
     fun simulateRealTimeReviewScrape() {
-        _uiState.value = _uiState.value.copy(lastScrapeStatus = repository.scrapeReviewStatus(forceRefresh = true))
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                lastScrapeStatus = repository.scrapeReviewStatus(forceRefresh = true)
+            )
+        }
     }
 
     fun submitUserReview(restaurantId: String, text: String, rating: Int, category: ReviewCategory) {
@@ -203,7 +347,10 @@ class AppViewModel(
 
     fun allCuisines(): List<String> = _uiState.value.restaurants.map { it.cuisine }.distinct().sorted()
 
-    fun allCities(): List<String> = listOf("All") + _uiState.value.restaurants.map { it.city }.distinct().sorted()
+    fun allCities(): List<String> {
+        val dynamic = _uiState.value.restaurants.map { it.city }.filter { it.isNotBlank() }.distinct().sorted()
+        return (knownCityChips + dynamic).distinct()
+    }
 
     fun allVibes(): List<String> = _uiState.value.restaurants.flatMap { it.vibeTags }.distinct().sorted()
 
@@ -310,5 +457,57 @@ class AppViewModel(
             topCity = topCity,
             topCuisine = topCuisine
         )
+    }
+
+    private fun triggerSearchDebounced() {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(450)
+            performRemoteSearch()
+        }
+    }
+
+    private suspend fun performRemoteSearch(
+        latitude: Double? = null,
+        longitude: Double? = null
+    ) {
+        val snapshot = _uiState.value
+        _uiState.value = snapshot.copy(isSearchLoading = true, searchErrorMessage = null)
+
+        runCatching {
+            repository.searchRestaurants(
+                query = snapshot.searchQuery,
+                city = snapshot.selectedCity,
+                latitude = latitude,
+                longitude = longitude
+            )
+        }.onSuccess { restaurants ->
+            _uiState.value = _uiState.value.copy(
+                restaurants = restaurants,
+                isSearchLoading = false,
+                searchErrorMessage = null
+            )
+        }.onFailure { error ->
+            _uiState.value = _uiState.value.copy(
+                isSearchLoading = false,
+                searchErrorMessage = toFriendlySearchMessage(error)
+            )
+        }
+    }
+
+    private fun toFriendlySearchMessage(error: Throwable): String {
+        val message = error.message.orEmpty()
+        return when {
+            message.contains("REQUEST_DENIED", ignoreCase = true) ->
+                "Search is blocked by API key restrictions. Check PLACES_WEB_API_KEY settings in Google Cloud."
+            message.contains("OVER_QUERY_LIMIT", ignoreCase = true) ->
+                "Search quota reached. Try again later or increase your Places API quota."
+            message.contains("PLACES_WEB_API_KEY is missing", ignoreCase = true) ->
+                "Search key missing. Add PLACES_WEB_API_KEY in android/local.properties."
+            message.contains("network", ignoreCase = true) || message.contains("timeout", ignoreCase = true) ->
+                "Network issue while searching. Check connection and try again."
+            message.isNotBlank() -> message
+            else -> "Could not load restaurants right now."
+        }
     }
 }

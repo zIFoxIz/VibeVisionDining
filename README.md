@@ -64,6 +64,38 @@ Android app workflow:
 2. Ensure the Android environment is configured.
 3. Build and run the app on an emulator or connected Android device.
 
+Google Maps API setup:
+
+1. Open Google Cloud Console and create or select a project.
+2. Enable billing for the project.
+3. Enable APIs: Maps SDK for Android and Places API (optional but recommended for restaurant search).
+4. Create an API key.
+5. Restrict the key to Android apps and set your package name plus SHA-1 certificate fingerprint.
+6. Add the key to android/local.properties:
+  MAPS_API_KEY=YOUR_REAL_KEY
+7. For Google Places HTTP search used by the Search screen, add a separate web-service key:
+  PLACES_WEB_API_KEY=YOUR_PLACES_WEB_SERVICE_KEY
+7. Sync Gradle and run the app.
+
+Notes:
+
+- local.properties is ignored by git in this repository, so your key will not be committed.
+- You can also set MAPS_API_KEY as an environment variable instead of local.properties.
+- You can also set PLACES_WEB_API_KEY as an environment variable.
+
+Firebase Auth setup:
+
+1. Create or select a Firebase project.
+2. Add Android app package `com.example.vibevision` in Firebase project settings.
+3. Download `google-services.json` and place it at `android/google-services.json`.
+4. In Firebase Authentication, enable providers:
+  - Email/Password
+  - Anonymous
+  - Google
+5. From Firebase project settings, copy the Web client ID and add to `android/local.properties`:
+  FIREBASE_WEB_CLIENT_ID=YOUR_WEB_CLIENT_ID
+6. Sync Gradle and run the app.
+
 ML pipeline workflow:
 
 1. Create and activate a Python virtual environment.

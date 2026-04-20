@@ -10,9 +10,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Switch
@@ -117,10 +124,18 @@ fun AppBottomNavigationBar(
 ) {
     NavigationBar {
         items.forEach { destination ->
+            val icon = when (destination.label.lowercase()) {
+                "home" -> Icons.Filled.Home
+                "search" -> Icons.Filled.Search
+                "analyze" -> Icons.Filled.Insights
+                "insights" -> Icons.Filled.Lightbulb
+                "profile" -> Icons.Filled.Person
+                else -> Icons.Filled.Home
+            }
             NavigationBarItem(
                 selected = selectedRoute == destination.route,
                 onClick = { onNavigate(destination) },
-                icon = { Text(text = destination.label.take(1)) },
+                icon = { Icon(imageVector = icon, contentDescription = destination.label) },
                 label = { Text(text = destination.label) }
             )
         }

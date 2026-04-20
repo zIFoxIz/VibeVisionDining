@@ -44,3 +44,10 @@ data class VibePreference(
     val vibe: String,
     val enabled: Boolean
 )
+
+data class UserProfile(
+    val name: String = "",
+    val address: String = "",
+    val phone: String = "",
+    val email: String = ""
+)

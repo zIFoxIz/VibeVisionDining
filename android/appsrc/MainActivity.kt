@@ -3,16 +3,20 @@ package com.example.vibevision
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.example.vibevision.di.AppContainer
 import com.example.vibevision.ml.PredictionResult
 import com.example.vibevision.ml.ReviewSentimentPredictor
 import com.google.gson.JsonParser
+import com.google.firebase.FirebaseApp
 import com.example.vibevision.ml.SentimentAnalyzer
 import com.example.vibevision.ml.TFLiteSentimentAnalyzer
-import com.example.vibevision.ui.app.VibeVisionApp
+import com.example.vibevision.ui.app.VibeVisionEntryFlow
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppContainer.initialize(applicationContext)
+        FirebaseApp.initializeApp(applicationContext)
 
         // Load model JSON from assets
         val modelAnalyzer: ReviewSentimentPredictor = try {
@@ -55,7 +59,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            VibeVisionApp(analyzer = modelAnalyzer)
+            VibeVisionEntryFlow(analyzer = modelAnalyzer)
         }
     }
 }

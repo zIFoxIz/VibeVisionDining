@@ -16,7 +16,7 @@ class RestaurantRepository(
     private val restaurantsCacheKey = "restaurants:list"
     private val scrapeStatusKey = "scrape:status"
 
-    fun loadRestaurants(forceRefresh: Boolean = false): List<Restaurant> {
+    suspend fun loadRestaurants(forceRefresh: Boolean = false): List<Restaurant> {
         if (!forceRefresh) {
             cache.get<List<Restaurant>>(restaurantsCacheKey)?.let { return it }
         }
@@ -39,13 +39,30 @@ class RestaurantRepository(
         localDatabase.saveFavoriteIds(ids)
     }
 
-    fun scrapeReviewStatus(forceRefresh: Boolean = true): String {
+    suspend fun scrapeReviewStatus(forceRefresh: Boolean = true): String {
         if (!forceRefresh) {
             cache.get<String>(scrapeStatusKey)?.let { return it }
         }
         val status = api.scrapeReviewStatus()
         cache.put(scrapeStatusKey, status)
         return status
+    }
+
+    suspend fun searchRestaurants(
+        query: String,
+        city: String,
+        latitude: Double? = null,
+        longitude: Double? = null
+    ): List<Restaurant> {
+        val results = api.searchRestaurants(
+            query = query,
+            city = city,
+            latitude = latitude,
+            longitude = longitude
+        )
+        localDatabase.saveRestaurants(results)
+        cache.put(restaurantsCacheKey, results)
+        return results
     }
 
     fun appendUserReview(restaurantId: String, review: Review) {
