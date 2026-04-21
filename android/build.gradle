@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'com.google.gms.google-services'
 }
 
 import java.util.Properties
@@ -15,7 +16,11 @@ if (localPropertiesFile.exists()) {
 
 def mapsApiKey = localProperties.getProperty('MAPS_API_KEY') ?: System.getenv('MAPS_API_KEY') ?: ''
 def placesWebApiKey = localProperties.getProperty('PLACES_WEB_API_KEY') ?: System.getenv('PLACES_WEB_API_KEY') ?: ''
-def firebaseWebClientId = localProperties.getProperty('FIREBASE_WEB_CLIENT_ID') ?: System.getenv('FIREBASE_WEB_CLIENT_ID') ?: ''
+def firebaseApiKey = localProperties.getProperty('FIREBASE_API_KEY') ?: System.getenv('FIREBASE_API_KEY') ?: ''
+def firebaseAppId = localProperties.getProperty('FIREBASE_APP_ID') ?: System.getenv('FIREBASE_APP_ID') ?: ''
+def firebaseProjectId = localProperties.getProperty('FIREBASE_PROJECT_ID') ?: System.getenv('FIREBASE_PROJECT_ID') ?: ''
+def firebaseStorageBucket = localProperties.getProperty('FIREBASE_STORAGE_BUCKET') ?: System.getenv('FIREBASE_STORAGE_BUCKET') ?: ''
+def firebaseSenderId = localProperties.getProperty('FIREBASE_GCM_SENDER_ID') ?: System.getenv('FIREBASE_GCM_SENDER_ID') ?: ''
 
 android {
     namespace "com.example.vibevision"
@@ -30,7 +35,11 @@ android {
         manifestPlaceholders = [MAPS_API_KEY: mapsApiKey]
         buildConfigField "String", "GOOGLE_MAPS_API_KEY", "\"${mapsApiKey}\""
         buildConfigField "String", "GOOGLE_PLACES_WEB_API_KEY", "\"${placesWebApiKey}\""
-        buildConfigField "String", "FIREBASE_WEB_CLIENT_ID", "\"${firebaseWebClientId}\""
+        buildConfigField "String", "FIREBASE_API_KEY", "\"${firebaseApiKey}\""
+        buildConfigField "String", "FIREBASE_APP_ID", "\"${firebaseAppId}\""
+        buildConfigField "String", "FIREBASE_PROJECT_ID", "\"${firebaseProjectId}\""
+        buildConfigField "String", "FIREBASE_STORAGE_BUCKET", "\"${firebaseStorageBucket}\""
+        buildConfigField "String", "FIREBASE_GCM_SENDER_ID", "\"${firebaseSenderId}\""
         buildConfigField "String", "RESTAURANT_API_BASE_URL", '"http://10.0.2.2:8080/"'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -66,6 +75,7 @@ android {
             java.srcDirs = []
             kotlin.srcDirs = ['appsrc', 'data', 'di', 'domain', 'ml', 'model', 'ui']
             assets.srcDirs = ['assets']
+            res.srcDirs = ['res']
         }
         test {
             java.srcDirs = []
@@ -107,7 +117,6 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.11.0'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.google.firebase:firebase-auth-ktx'
-    implementation 'com.google.android.gms:play-services-auth:21.2.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1'
     implementation 'org.tensorflow:tensorflow-lite:2.14.0'
     

@@ -1,8 +1,5 @@
 package com.example.vibevision.ui.app
 
-import android.app.Activity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -61,12 +58,9 @@ import com.example.vibevision.ui.theme.Rose
 import com.example.vibevision.ui.theme.SageGreen
 import com.example.vibevision.ui.theme.VibeVisionTheme
 import com.example.vibevision.ui.theme.WarmOrange
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
 import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -86,7 +80,11 @@ private enum class AuthMode {
 fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
     val context = LocalContext.current
     val firebaseConfigured = remember {
-        runCatching { FirebaseApp.getApps(context).isNotEmpty() || FirebaseApp.initializeApp(context) != null }
+        runCatching {
+            FirebaseApp.getApps(context).isNotEmpty() ||
+                FirebaseApp.initializeApp(context) != null ||
+                initializeFirebaseFromBuildConfig(context)
+        }
             .getOrDefault(false)
     }
     val auth = remember(firebaseConfigured) { if (firebaseConfigured) FirebaseAuth.getInstance() else null }
@@ -94,40 +92,6 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
     var stage by rememberSaveable { mutableStateOf(EntryStage.WELCOME) }
     var authLoading by rememberSaveable { mutableStateOf(false) }
     var authError by rememberSaveable { mutableStateOf<String?>(null) }
-
-    val googleSignInLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode != Activity.RESULT_OK) {
-            authLoading = false
-            return@rememberLauncherForActivityResult
-        }
-
-        val authRef = auth
-        if (authRef == null) {
-            authLoading = false
-            authError = "Firebase is not configured. Add google-services.json and sync."
-            return@rememberLauncherForActivityResult
-        }
-
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-        runCatching { task.getResult(ApiException::class.java) }
-            .onSuccess { account ->
-                scope.launch {
-                    runCatching {
-                        val credential = GoogleAuthProvider.getCredential(account.idToken, null)
-                        authRef.signInWithCredential(credential).await()
-                    }.onFailure { error ->
-                        authError = error.message ?: "Google sign-in failed."
-                    }
-                    authLoading = false
-                }
-            }
-            .onFailure { error ->
-                authLoading = false
-                authError = error.message ?: "Google sign-in failed."
-            }
-    }
 
     LaunchedEffect(stage) {
         if (stage == EntryStage.WELCOME) {
@@ -170,7 +134,7 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
             onContinueAsGuest = {
                 val authRef = auth
                 if (authRef == null) {
-                    authError = "Firebase is not configured. Add google-services.json and sync."
+                    authError = "Firebase is not configured. Add google-services.json or FIREBASE_* values in local.properties."
                     return@AuthScreen
                 }
                 authLoading = true
@@ -182,31 +146,10 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
                     )
                 }
             },
-            onGoogleSignIn = {
-                val authRef = auth
-                if (authRef == null) {
-                    authError = "Firebase is not configured. Add google-services.json and sync."
-                    return@AuthScreen
-                }
-
-                if (BuildConfig.FIREBASE_WEB_CLIENT_ID.isBlank()) {
-                    authError = "FIREBASE_WEB_CLIENT_ID is missing in local.properties."
-                    return@AuthScreen
-                }
-
-                authLoading = true
-                authError = null
-                val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                    .requestIdToken(BuildConfig.FIREBASE_WEB_CLIENT_ID)
-                    .requestEmail()
-                    .build()
-                val client = GoogleSignIn.getClient(context, options)
-                googleSignInLauncher.launch(client.signInIntent)
-            },
             onAuthSuccess = { mode, email, password ->
                 val authRef = auth
                 if (authRef == null) {
-                    authError = "Firebase is not configured. Add google-services.json and sync."
+                    authError = "Firebase is not configured. Add google-services.json or FIREBASE_* values in local.properties."
                     return@AuthScreen
                 }
 
@@ -344,7 +287,6 @@ private fun AuthScreen(
     errorMessage: String?,
     onDismissError: () -> Unit,
     onContinueAsGuest: () -> Unit,
-    onGoogleSignIn: () -> Unit,
     onAuthSuccess: (AuthMode, String, String) -> Unit
 ) {
     VibeVisionTheme(darkTheme = false) {
@@ -507,21 +449,6 @@ private fun AuthScreen(
                     }
 
                     Button(
-                        onClick = onGoogleSignIn,
-                        enabled = !isLoading,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = InkBlue
-                        )
-                    ) {
-                        Text("Continue with Google")
-                    }
-
-                    Button(
                         onClick = onContinueAsGuest,
                         enabled = !isLoading,
                         modifier = Modifier
@@ -555,7 +482,52 @@ private suspend fun performFirebaseAuth(
 ) {
     runCatching { action() }
         .onFailure { error ->
-            onError(error.message ?: "Authentication failed.")
+            onError(toFriendlyAuthError(error))
         }
     onComplete()
+}
+
+private fun toFriendlyAuthError(error: Throwable): String {
+    val raw = error.message.orEmpty()
+    return when {
+        raw.contains("CONFIGURATION_NOT_FOUND", ignoreCase = true) ->
+            "Firebase Authentication is not fully enabled for this project. In Firebase Console, open Authentication and enable Email/Password (and Google if needed)."
+        raw.contains("OPERATION_NOT_ALLOWED", ignoreCase = true) ->
+            "This sign-in method is disabled. Enable it in Firebase Console > Authentication > Sign-in method."
+        raw.contains("INVALID_LOGIN_CREDENTIALS", ignoreCase = true) ->
+            "Invalid email or password."
+        raw.contains("EMAIL_EXISTS", ignoreCase = true) ->
+            "This email already has an account. Try Log In instead."
+        raw.contains("network", ignoreCase = true) ->
+            "Network issue. Check connection and try again."
+        raw.isNotBlank() -> raw
+        else -> "Authentication failed."
+    }
+}
+
+private fun initializeFirebaseFromBuildConfig(context: android.content.Context): Boolean {
+    if (BuildConfig.FIREBASE_APP_ID.isBlank() ||
+        BuildConfig.FIREBASE_API_KEY.isBlank() ||
+        BuildConfig.FIREBASE_PROJECT_ID.isBlank()
+    ) {
+        return false
+    }
+
+    if (FirebaseApp.getApps(context).isNotEmpty()) return true
+
+    val optionsBuilder = FirebaseOptions.Builder()
+        .setApplicationId(BuildConfig.FIREBASE_APP_ID)
+        .setApiKey(BuildConfig.FIREBASE_API_KEY)
+        .setProjectId(BuildConfig.FIREBASE_PROJECT_ID)
+
+    if (BuildConfig.FIREBASE_STORAGE_BUCKET.isNotBlank()) {
+        optionsBuilder.setStorageBucket(BuildConfig.FIREBASE_STORAGE_BUCKET)
+    }
+    if (BuildConfig.FIREBASE_GCM_SENDER_ID.isNotBlank()) {
+        optionsBuilder.setGcmSenderId(BuildConfig.FIREBASE_GCM_SENDER_ID)
+    }
+
+    return runCatching {
+        FirebaseApp.initializeApp(context, optionsBuilder.build()) != null
+    }.getOrDefault(false)
 }
