@@ -8,6 +8,7 @@ __pycache__/
 .gradle/
 **/build/
 local.properties
+android/google-services.json
 
 # OS / IDE
 .DS_Store
