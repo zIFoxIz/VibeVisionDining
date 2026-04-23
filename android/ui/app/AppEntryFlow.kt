@@ -138,12 +138,40 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
                     return@AuthScreen
                 }
                 authLoading = true
+                authError = null
                 scope.launch {
                     performFirebaseAuth(
                         action = { authRef.signInAnonymously().await() },
+                        onSuccess = { stage = EntryStage.APP },
                         onError = { authError = it },
                         onComplete = { authLoading = false }
                     )
+                }
+            },
+            onForgotPassword = { email ->
+                val authRef = auth
+                if (authRef == null) {
+                    authError = "Firebase is not configured. Add google-services.json or FIREBASE_* values in local.properties."
+                    return@AuthScreen
+                }
+
+                val normalizedEmail = email.trim()
+                if (normalizedEmail.isBlank()) {
+                    authError = "Enter your email first, then tap Forgot Password."
+                    return@AuthScreen
+                }
+
+                authLoading = true
+                authError = null
+                scope.launch {
+                    runCatching {
+                        authRef.sendPasswordResetEmail(normalizedEmail).await()
+                    }.onSuccess {
+                        authError = "Password reset email sent to $normalizedEmail."
+                    }.onFailure { error ->
+                        authError = toFriendlyAuthError(error)
+                    }
+                    authLoading = false
                 }
             },
             onAuthSuccess = { mode, email, password ->
@@ -154,6 +182,7 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
                 }
 
                 authLoading = true
+                authError = null
                 scope.launch {
                     val action: suspend () -> Unit = {
                         if (mode == AuthMode.LOGIN) {
@@ -165,8 +194,10 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
 
                     performFirebaseAuth(
                         action = action,
+                        onSuccess = { stage = EntryStage.APP },
                         onError = { authError = it },
-                        onComplete = { authLoading = false }
+                        onComplete = { authLoading = false },
+                        alwaysUseSignInError = mode == AuthMode.LOGIN
                     )
                 }
             }
@@ -287,6 +318,7 @@ private fun AuthScreen(
     errorMessage: String?,
     onDismissError: () -> Unit,
     onContinueAsGuest: () -> Unit,
+    onForgotPassword: (String) -> Unit,
     onAuthSuccess: (AuthMode, String, String) -> Unit
 ) {
     VibeVisionTheme(darkTheme = false) {
@@ -295,7 +327,7 @@ private fun AuthScreen(
         var password by rememberSaveable { mutableStateOf("") }
         var confirmPassword by rememberSaveable { mutableStateOf("") }
         var showPassword by rememberSaveable { mutableStateOf(false) }
-        val canSubmit = email.isNotBlank() && password.length >= 6 &&
+        val canSubmit = email.trim().isNotBlank() && password.length >= 6 &&
             (mode == AuthMode.LOGIN || confirmPassword == password)
 
         Box(
@@ -420,6 +452,21 @@ private fun AuthScreen(
                         )
                     )
 
+                    if (mode == AuthMode.LOGIN) {
+                        Button(
+                            onClick = { onForgotPassword(email) },
+                            enabled = !isLoading,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFF2F6F4),
+                                contentColor = InkBlue
+                            )
+                        ) {
+                            Text("Forgot Password")
+                        }
+                    }
+
                     if (mode == AuthMode.CREATE) {
                         OutlinedTextField(
                             value = confirmPassword,
@@ -477,12 +524,20 @@ private fun AuthScreen(
 
 private suspend fun performFirebaseAuth(
     action: suspend () -> Unit,
+    onSuccess: () -> Unit,
     onError: (String) -> Unit,
-    onComplete: () -> Unit
+    onComplete: () -> Unit,
+    alwaysUseSignInError: Boolean = false
 ) {
     runCatching { action() }
+        .onSuccess { onSuccess() }
         .onFailure { error ->
-            onError(toFriendlyAuthError(error))
+            val message = if (alwaysUseSignInError) {
+                "Email or password is incorrect."
+            } else {
+                toFriendlyAuthError(error)
+            }
+            onError(message)
         }
     onComplete()
 }
@@ -496,7 +551,19 @@ private fun toFriendlyAuthError(error: Throwable): String {
             "This sign-in method is disabled. Enable it in Firebase Console > Authentication > Sign-in method."
         raw.contains("INVALID_LOGIN_CREDENTIALS", ignoreCase = true) ->
             "Invalid email or password."
+        raw.contains("INVALID_PASSWORD", ignoreCase = true) ->
+            "Incorrect password. Tap Forgot Password to reset it."
+        raw.contains("EMAIL_NOT_FOUND", ignoreCase = true) ->
+            "No account found for that email. Use Create Account first."
+        raw.contains("INVALID_EMAIL", ignoreCase = true) ->
+            "Email address format is invalid."
+        raw.contains("USER_DISABLED", ignoreCase = true) ->
+            "This account is disabled in Firebase Authentication."
+        raw.contains("TOO_MANY_ATTEMPTS_TRY_LATER", ignoreCase = true) ->
+            "Too many attempts. Wait a bit, then try again or reset your password."
         raw.contains("EMAIL_EXISTS", ignoreCase = true) ->
+            "This email already has an account. Try Log In instead."
+        raw.contains("EMAIL_ALREADY_IN_USE", ignoreCase = true) ->
             "This email already has an account. Try Log In instead."
         raw.contains("network", ignoreCase = true) ->
             "Network issue. Check connection and try again."

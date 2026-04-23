@@ -21,6 +21,8 @@ def firebaseAppId = localProperties.getProperty('FIREBASE_APP_ID') ?: System.get
 def firebaseProjectId = localProperties.getProperty('FIREBASE_PROJECT_ID') ?: System.getenv('FIREBASE_PROJECT_ID') ?: ''
 def firebaseStorageBucket = localProperties.getProperty('FIREBASE_STORAGE_BUCKET') ?: System.getenv('FIREBASE_STORAGE_BUCKET') ?: ''
 def firebaseSenderId = localProperties.getProperty('FIREBASE_GCM_SENDER_ID') ?: System.getenv('FIREBASE_GCM_SENDER_ID') ?: ''
+def openAiApiKey = localProperties.getProperty('OPENAI_API_KEY') ?: System.getenv('OPENAI_API_KEY') ?: ''
+def openAiModel = localProperties.getProperty('OPENAI_MODEL') ?: System.getenv('OPENAI_MODEL') ?: 'gpt-4o-mini'
 
 android {
     namespace "com.example.vibevision"
@@ -40,6 +42,8 @@ android {
         buildConfigField "String", "FIREBASE_PROJECT_ID", "\"${firebaseProjectId}\""
         buildConfigField "String", "FIREBASE_STORAGE_BUCKET", "\"${firebaseStorageBucket}\""
         buildConfigField "String", "FIREBASE_GCM_SENDER_ID", "\"${firebaseSenderId}\""
+        buildConfigField "String", "OPENAI_API_KEY", "\"${openAiApiKey}\""
+        buildConfigField "String", "OPENAI_MODEL", "\"${openAiModel}\""
         buildConfigField "String", "RESTAURANT_API_BASE_URL", '"http://10.0.2.2:8080/"'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -117,6 +121,7 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.11.0'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.google.firebase:firebase-auth-ktx'
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1'
     implementation 'org.tensorflow:tensorflow-lite:2.14.0'
     

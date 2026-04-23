@@ -1,5 +1,6 @@
 package com.example.vibevision.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,8 +29,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import com.example.vibevision.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.vibevision.model.Review
@@ -102,16 +106,20 @@ fun BrandLogoMark(modifier: Modifier = Modifier) {
     ) {
         Box(
             modifier = Modifier
-                .size(28.dp)
-                .clip(androidx.compose.foundation.shape.CircleShape)
-                .background(SageGreen),
+                .size(44.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = "V", color = Color.White, fontWeight = FontWeight.Bold)
+            Image(
+                painter = painterResource(id = R.drawable.ic_vvd_foreground),
+                contentDescription = "VVD Logo",
+                modifier = Modifier.size(40.dp)
+            )
         }
         Column {
             Text(text = "VibeVision", fontWeight = FontWeight.Bold)
-            Text(text = "Dining", color = WarningOrange)
+            Text(text = "Dining", color = Color.Black)
         }
     }
 }

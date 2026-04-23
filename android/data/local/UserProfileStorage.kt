@@ -4,28 +4,33 @@ import android.content.Context
 import com.example.vibevision.model.UserProfile
 
 interface UserProfileStorage {
-    fun loadProfile(): UserProfile
-    fun saveProfile(profile: UserProfile)
+    fun loadProfile(userId: String?): UserProfile
+    fun saveProfile(userId: String?, profile: UserProfile)
 }
 
 class SharedPreferencesUserProfileStorage(context: Context) : UserProfileStorage {
     private val preferences = context.getSharedPreferences("vibevision_profile", Context.MODE_PRIVATE)
 
-    override fun loadProfile(): UserProfile {
+    private fun scopedKey(userId: String?, field: String): String {
+        val owner = userId?.takeIf { it.isNotBlank() } ?: "guest"
+        return "${owner}_$field"
+    }
+
+    override fun loadProfile(userId: String?): UserProfile {
         return UserProfile(
-            name = preferences.getString("name", "").orEmpty(),
-            address = preferences.getString("address", "").orEmpty(),
-            phone = preferences.getString("phone", "").orEmpty(),
-            email = preferences.getString("email", "").orEmpty()
+            name = preferences.getString(scopedKey(userId, "name"), "").orEmpty(),
+            address = preferences.getString(scopedKey(userId, "address"), "").orEmpty(),
+            phone = preferences.getString(scopedKey(userId, "phone"), "").orEmpty(),
+            email = preferences.getString(scopedKey(userId, "email"), "").orEmpty()
         )
     }
 
-    override fun saveProfile(profile: UserProfile) {
+    override fun saveProfile(userId: String?, profile: UserProfile) {
         preferences.edit()
-            .putString("name", profile.name)
-            .putString("address", profile.address)
-            .putString("phone", profile.phone)
-            .putString("email", profile.email)
+            .putString(scopedKey(userId, "name"), profile.name)
+            .putString(scopedKey(userId, "address"), profile.address)
+            .putString(scopedKey(userId, "phone"), profile.phone)
+            .putString(scopedKey(userId, "email"), profile.email)
             .apply()
     }
 }

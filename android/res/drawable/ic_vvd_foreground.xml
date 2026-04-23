@@ -16,14 +16,14 @@
 
         <path
             android:fillColor="#FFF8EA"
-            android:pathData="M36,18 L48,90 L56,90 L68,18 L60,18 L52,64 L44,18 Z" />
+            android:pathData="M46,18 L58,90 L66,90 L78,18 L70,18 L62,64 L54,18 Z" />
 
         <path
             android:fillColor="#FFFFFF"
-            android:pathData="M72,18 L84,18 C96,18 100,30 100,54 C100,78 96,90 84,90 L72,90 Z" />
+            android:pathData="M84,18 L96,18 C108,18 108,30 108,54 C108,78 108,90 96,90 L84,90 Z" />
 
         <path
             android:fillColor="#000000"
-            android:pathData="M79,30 L83,30 C89,30 92,38 92,54 C92,70 89,78 83,78 L79,78 Z" />
+            android:pathData="M91,30 L95,30 C101,30 104,38 104,54 C104,70 101,78 95,78 L91,78 Z" />
     </group>
 </vector>

@@ -2,8 +2,13 @@ package com.example.vibevision.ui.app
 
 import android.content.Intent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -12,6 +17,7 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.DrawerValue
@@ -20,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -122,6 +129,17 @@ fun VibeVisionApp(
         AppDestination.VibeSetup.route to "Vibe Setup",
         AppDestination.DishSentiment.route to "Dish Sentiment"
     )
+    val displayFirstName = remember(state.userProfile.name, state.userProfile.email) {
+        val trimmedName = state.userProfile.name.trim()
+        if (trimmedName.isNotEmpty()) {
+            trimmedName.split(Regex("\\s+"))[0]
+        } else {
+            val emailPrefix = state.userProfile.email.substringBefore("@").trim()
+            if (emailPrefix.isNotEmpty()) emailPrefix else "Profile"
+        }
+    }
+    val isPrimaryRoute = primaryDestinations.any { it.route == currentRoute }
+    val showBackButton = !isPrimaryRoute
 
     VibeVisionTheme(darkTheme = state.isDarkMode) {
         fun navigateTo(destination: AppDestination) {
@@ -164,21 +182,56 @@ fun VibeVisionApp(
                     TopAppBar(
                         title = { Text(routeLabels[currentRoute] ?: "VibeVision Dining") },
                         navigationIcon = {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(imageVector = Icons.Filled.Menu, contentDescription = "Open menu")
+                            if (showBackButton) {
+                                IconButton(onClick = {
+                                    val popped = navController.popBackStack()
+                                    if (!popped) {
+                                        val fallback = when (currentRoute) {
+                                            AppDestination.Detail.route,
+                                            AppDestination.DishSentiment.route -> AppDestination.Home.route
+                                            else -> AppDestination.Profile.route
+                                        }
+                                        navController.navigate(fallback) {
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                }) {
+                                    Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Back")
+                                }
+                            } else {
+                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                    Icon(imageVector = Icons.Filled.Menu, contentDescription = "Open menu")
+                                }
+                            }
+                        },
+                        actions = {
+                            TextButton(onClick = { navigateTo(AppDestination.Profile) }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = displayFirstName,
+                                        modifier = Modifier.padding(start = 4.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Filled.AccountCircle,
+                                        contentDescription = "Open profile"
+                                    )
+                                }
                             }
                         }
                     )
                 },
                 bottomBar = {
-                    AppBottomNavigationBar(
-                        items = primaryDestinations.map { NavDestinationItem(route = it.route, label = it.label) },
-                        selectedRoute = currentRoute,
-                        onNavigate = { item ->
-                            val destination = primaryDestinations.first { it.route == item.route }
-                            navigateTo(destination)
-                        }
-                    )
+                    if (isPrimaryRoute) {
+                        AppBottomNavigationBar(
+                            items = primaryDestinations.map { NavDestinationItem(route = it.route, label = it.label) },
+                            selectedRoute = currentRoute,
+                            onNavigate = { item ->
+                                val destination = primaryDestinations.first { it.route == item.route }
+                                navigateTo(destination)
+                            }
+                        )
+                    }
                 }
             ) { innerPadding ->
                 Box(modifier = Modifier.padding(innerPadding)) {
@@ -242,15 +295,23 @@ fun VibeVisionApp(
                     composable(AppDestination.Insights.route) {
                         AdvancedAnalyticsDashboardScreen(
                             snapshot = appViewModel.analyticsSnapshot(),
-                            recommendations = appViewModel.personalizedRecommendations(),
-                            scrapeStatus = state.lastScrapeStatus,
-                            onSimulateScrape = appViewModel::simulateRealTimeReviewScrape
+                            recommendations = appViewModel.personalizedRecommendations()
                         )
                     }
 
                     composable(AppDestination.Profile.route) {
                         BasicProfileScreen(
                             preferences = state.vibePreferences,
+                            profileName = state.userProfile.name,
+                            profileEmail = state.userProfile.email,
+                            favoriteCount = state.favoriteRestaurantIds.size,
+                            recommendationCount = appViewModel.personalizedRecommendations().size,
+                            onOpenVibeSetup = { navController.navigate(AppDestination.VibeSetup.route) }
+                        )
+                    }
+
+                    composable(AppDestination.AccountSettings.route) {
+                        AccountSettingsScreen(
                             isDarkMode = state.isDarkMode,
                             isOfflineMode = state.isOfflineMode,
                             pushNotificationsEnabled = state.pushNotificationsEnabled,
@@ -258,9 +319,9 @@ fun VibeVisionApp(
                             profileName = state.userProfile.name,
                             profileAddress = state.userProfile.address,
                             profilePhone = state.userProfile.phone,
-                            profileEmail = state.userProfile.email,
+                            email = state.userProfile.email,
                             profileSavedMessage = state.profileSavedMessage,
-                            onToggle = appViewModel::toggleVibe,
+                            accountActionMessage = state.accountActionMessage,
                             onDarkModeToggle = appViewModel::setDarkMode,
                             onOfflineModeToggle = appViewModel::setOfflineMode,
                             onPushNotificationsToggle = appViewModel::setPushNotifications,
@@ -271,14 +332,6 @@ fun VibeVisionApp(
                             onEmailChange = appViewModel::setProfileEmail,
                             onSaveProfile = appViewModel::saveUserProfile,
                             onDismissSavedMessage = appViewModel::clearProfileSavedMessage,
-                            onOpenVibeSetup = { navController.navigate(AppDestination.VibeSetup.route) }
-                        )
-                    }
-
-                    composable(AppDestination.AccountSettings.route) {
-                        AccountSettingsScreen(
-                            email = state.userProfile.email,
-                            accountActionMessage = state.accountActionMessage,
                             onChangePassword = appViewModel::changePassword,
                             onSignOut = appViewModel::signOut,
                             onDismissMessage = appViewModel::dismissAccountActionMessage

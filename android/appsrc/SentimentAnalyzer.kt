@@ -19,21 +19,35 @@ class SentimentAnalyzer(
     }.toTypedArray()
     private val intercept: FloatArray = modelJson.getAsJsonArray("intercept").map { it.asFloat }.toFloatArray()
     private val topFeatures: List<String> = modelJson.getAsJsonArray("top_features").map { it.asString }
+    private val topFeaturesSet: Set<String> = topFeatures.toHashSet()
+
+    // Strong sentiment words absent from the trained model vocabulary
+    private val strongPositiveWords = setOf(
+        "exceptional", "outstanding", "phenomenal", "superb", "magnificent",
+        "excellent", "splendid", "terrific", "brilliant", "flawless", "extraordinary",
+        "marvelous", "spectacular", "stellar", "impeccable", "exquisite"
+    )
+    private val strongNegativeWords = setOf(
+        "disgusting", "revolting", "atrocious", "abysmal", "dreadful",
+        "appalling", "horrendous", "inedible", "deplorable", "despicable",
+        "nauseating", "putrid", "repulsive", "vile", "loathsome"
+    )
 
     /**
-     * Preprocess text: lowercase, tokenize, remove stopwords
+     * Preprocess text: lowercase, tokenize, remove stopwords; also produces bigrams
+     * so that multi-word model features (e.g. "great service") can match.
      */
     fun preprocessText(text: String): List<String> {
-        return text
+        val tokens = text
             .lowercase()
-            .split(Regex("[\\s\\p{P}]+"))  // Split on whitespace and punctuation
-            .filter { token ->
-                token.length > 1 && token !in englishStopwords
-            }
+            .split(Regex("[\\s\\p{P}]+"))
+            .filter { token -> token.length > 1 && token !in englishStopwords }
+        val bigrams = tokens.zipWithNext { a, b -> "$a $b" }
+        return tokens + bigrams
     }
 
     /**
-     * Extract TF-IDF-like features (simplified: term frequency in top features)
+     * Extract TF-IDF-like features (term frequency against top features list).
      */
     private fun extractFeatures(tokens: List<String>): FloatArray {
         val features = FloatArray(topFeatures.size)
@@ -41,6 +55,36 @@ class SentimentAnalyzer(
             features[i] = tokens.count { it == topFeatures[i] }.toFloat()
         }
         return features
+    }
+
+    /**
+     * If the model returns a low-confidence or neutral result but the raw text
+     * contains strong unambiguous sentiment words, override the prediction.
+     */
+    private fun applyKeywordOverride(
+        text: String,
+        modelSentiment: String,
+        modelConfidence: Float,
+        scores: MutableMap<String, Float>
+    ): Pair<String, Float> {
+        val lower = text.lowercase()
+        val hasStrongPositive = strongPositiveWords.any { lower.contains(it) }
+        val hasStrongNegative = strongNegativeWords.any { lower.contains(it) }
+
+        // Only override when the model is uncertain or contradicts obvious signals
+        if (hasStrongPositive && !hasStrongNegative && modelSentiment != "positive") {
+            scores["positive"] = maxOf(scores["positive"] ?: 0f, 0.72f)
+            scores["neutral"] = minOf(scores["neutral"] ?: 0f, 0.20f)
+            scores["negative"] = minOf(scores["negative"] ?: 0f, 0.08f)
+            return "positive" to (scores["positive"] ?: 0.72f)
+        }
+        if (hasStrongNegative && !hasStrongPositive && modelSentiment != "negative") {
+            scores["negative"] = maxOf(scores["negative"] ?: 0f, 0.72f)
+            scores["neutral"] = minOf(scores["neutral"] ?: 0f, 0.20f)
+            scores["positive"] = minOf(scores["positive"] ?: 0f, 0.08f)
+            return "negative" to (scores["negative"] ?: 0.72f)
+        }
+        return modelSentiment to modelConfidence
     }
 
     /**
@@ -89,13 +133,14 @@ class SentimentAnalyzer(
         val predictedSentiment = classes[predictedLabel]
         val confidence = probabilities[predictedLabel]
 
+        val mutableScores = classes.indices.associate { i -> classes[i] to probabilities[i] }.toMutableMap()
+        val (finalSentiment, finalConfidence) = applyKeywordOverride(text, predictedSentiment, confidence, mutableScores)
+
         return PredictionResult(
-            sentiment = predictedSentiment,
-            label = predictedLabel,
-            confidence = confidence,
-            scores = classes.indices.associate { i ->
-                classes[i] to probabilities[i]
-            }
+            sentiment = finalSentiment,
+            label = classes.indexOf(finalSentiment).takeIf { it >= 0 } ?: predictedLabel,
+            confidence = finalConfidence,
+            scores = mutableScores
         )
     }
 

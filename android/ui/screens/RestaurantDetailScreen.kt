@@ -1,8 +1,14 @@
 package com.example.vibevision.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,8 +30,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.example.vibevision.model.Restaurant
 import com.example.vibevision.model.Review
 import com.example.vibevision.model.ReviewCategory
@@ -55,12 +65,36 @@ fun RestaurantDetailScreen(
     onOpenDishSentiment: () -> Unit,
     onSubmitReview: (String, Int, ReviewCategory) -> Unit
 ) {
+    val context = LocalContext.current
     var selectedCategory by remember { mutableStateOf("All") }
     var sortOption by remember { mutableStateOf("Highest") }
     var draftReview by remember { mutableStateOf("") }
     var draftRating by remember { mutableStateOf("5") }
     var draftCategory by remember { mutableStateOf(ReviewCategory.FOOD) }
+    var capturedPhoto by remember { mutableStateOf<Bitmap?>(null) }
+    var cameraMessage by remember { mutableStateOf<String?>(null) }
     val filteredReviews = filterAndSortReviews(reviews, selectedCategory, sortOption)
+
+    val takePhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        if (bitmap != null) {
+            capturedPhoto = bitmap
+            cameraMessage = null
+        } else {
+            cameraMessage = "No photo captured."
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            takePhotoLauncher.launch(null)
+        } else {
+            cameraMessage = "Camera permission denied."
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -99,6 +133,38 @@ fun RestaurantDetailScreen(
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(text = "Restaurant Photo Gallery", fontWeight = FontWeight.SemiBold)
+                    Button(onClick = {
+                        val hasCameraPermission = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.CAMERA
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                        if (hasCameraPermission) {
+                            takePhotoLauncher.launch(null)
+                        } else {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                    }) {
+                        Text("Take Food/Restaurant Photo")
+                    }
+
+                    if (cameraMessage != null) {
+                        Text(text = cameraMessage ?: "", color = Color.Gray)
+                    }
+
+                    capturedPhoto?.let { bitmap ->
+                        Card(elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = "Captured restaurant photo",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(restaurant.photoLabels) { photo ->
                             Card(elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
@@ -263,27 +329,6 @@ fun RestaurantDetailScreen(
             }
         }
 
-        item {
-            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "Restaurant Map Integration (placeholder)", fontWeight = FontWeight.SemiBold)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(130.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(4.dp)
-                                .height(120.dp)
-                        ) {
-                            Text(text = "Map placeholder for ${restaurant.name}", color = Color.Gray)
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 

@@ -4,8 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
-import android.location.Location
-import android.location.LocationManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +39,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.example.vibevision.model.Restaurant
 import com.example.vibevision.ui.components.EmptyStateCard
 import com.example.vibevision.ui.components.FilterChipRow
@@ -99,7 +100,7 @@ fun RestaurantSearchScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            fetchLastKnownLocation(
+            fetchCurrentLocation(
                 context = context,
                 onFound = { lat, lng ->
                     locationError = null
@@ -155,7 +156,7 @@ fun RestaurantSearchScreen(
                     Manifest.permission.ACCESS_FINE_LOCATION
                 )
                 if (permissionState == PackageManager.PERMISSION_GRANTED) {
-                    fetchLastKnownLocation(
+                    fetchCurrentLocation(
                         context = context,
                         onFound = { lat, lng ->
                             locationError = null
@@ -294,30 +295,33 @@ fun RestaurantSearchScreen(
 }
 
 @SuppressLint("MissingPermission")
-private fun fetchLastKnownLocation(
+private fun fetchCurrentLocation(
     context: Context,
     onFound: (Double, Double) -> Unit,
     onError: (String) -> Unit
 ) {
-    val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-    if (manager == null) {
-        onError("Location service is unavailable.")
-        return
-    }
+    val fusedClient = LocationServices.getFusedLocationProviderClient(context)
+    val tokenSource = CancellationTokenSource()
 
-    val providers = listOf(
-        LocationManager.GPS_PROVIDER,
-        LocationManager.NETWORK_PROVIDER,
-        LocationManager.PASSIVE_PROVIDER
-    )
-
-    val best = providers
-        .mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }
-        .maxByOrNull(Location::getTime)
-
-    if (best == null) {
-        onError("Could not determine your location yet. Try moving the emulator location and retry.")
-    } else {
-        onFound(best.latitude, best.longitude)
-    }
+    fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, tokenSource.token)
+        .addOnSuccessListener { location ->
+            if (location != null) {
+                onFound(location.latitude, location.longitude)
+            } else {
+                fusedClient.lastLocation
+                    .addOnSuccessListener { lastLocation ->
+                        if (lastLocation != null) {
+                            onFound(lastLocation.latitude, lastLocation.longitude)
+                        } else {
+                            onError("Could not determine your location. Turn on device location and retry.")
+                        }
+                    }
+                    .addOnFailureListener { error ->
+                        onError(error.message ?: "Could not read last known location.")
+                    }
+            }
+        }
+        .addOnFailureListener { error ->
+            onError(error.message ?: "Location request failed.")
+        }
 }

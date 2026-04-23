@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
@@ -20,9 +19,7 @@ import com.example.vibevision.ui.app.AnalyticsSnapshot
 @Composable
 fun AdvancedAnalyticsDashboardScreen(
     snapshot: AnalyticsSnapshot,
-    recommendations: List<Restaurant>,
-    scrapeStatus: String,
-    onSimulateScrape: () -> Unit
+    recommendations: List<Restaurant>
 ) {
     LazyColumn(
         modifier = Modifier
@@ -43,18 +40,6 @@ fun AdvancedAnalyticsDashboardScreen(
                     Text(text = "Average rating: ${String.format("%.2f", snapshot.avgRating)}")
                     Text(text = "Top city: ${snapshot.topCity}")
                     Text(text = "Top cuisine: ${snapshot.topCuisine}")
-                }
-            }
-        }
-
-        item {
-            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(text = "Real-Time Review Scraping", fontWeight = FontWeight.SemiBold)
-                    Text(text = "Status: $scrapeStatus")
-                    Button(onClick = onSimulateScrape) {
-                        Text("Simulate Scrape Run")
-                    }
                 }
             }
         }

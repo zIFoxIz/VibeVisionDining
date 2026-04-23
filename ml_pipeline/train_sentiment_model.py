@@ -9,6 +9,7 @@ import numpy as np
 import os
 import warnings
 import json
+import re
 warnings.filterwarnings('ignore')
 
 from sklearn.model_selection import train_test_split
@@ -23,10 +24,75 @@ import pickle
 
 print("Loading Yelp dataset...")
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-DATASET_PATH = os.path.join(BASE_DIR, 'Dataset', 'Yelp Restaurant Reviews.csv')
+DATASET_DIR = os.path.join(BASE_DIR, 'Dataset')
+LEGACY_DATASET_PATH = os.path.join(DATASET_DIR, 'Yelp Restaurant Reviews.csv')
+OPEN_BUSINESS_PATH = os.path.join(DATASET_DIR, 'yelp_academic_dataset_business.json')
+OPEN_REVIEW_PATH = os.path.join(DATASET_DIR, 'yelp_academic_dataset_review.json')
 ML_PIPELINE_DIR = os.path.dirname(__file__)
+MAX_OPEN_REVIEWS = int(os.environ.get('YELP_MAX_REVIEWS', '300000'))
 
-df = pd.read_csv(DATASET_PATH)
+def load_restaurant_reviews_from_open_dataset(business_path, review_path, max_reviews):
+    print("Using Yelp Open Dataset JSON files...")
+    print("Scanning businesses to identify restaurants...")
+
+    restaurant_ids = set()
+    with open(business_path, 'r', encoding='utf-8') as business_file:
+        for line in business_file:
+            line = line.strip()
+            if not line:
+                continue
+            business = json.loads(line)
+            categories = (business.get('categories') or '').lower()
+            if 'restaurant' in categories:
+                business_id = business.get('business_id')
+                if business_id:
+                    restaurant_ids.add(business_id)
+
+    print(f"Restaurant businesses found: {len(restaurant_ids):,}")
+    print("Scanning reviews and keeping restaurant reviews...")
+
+    rows = []
+    with open(review_path, 'r', encoding='utf-8') as review_file:
+        for line in review_file:
+            line = line.strip()
+            if not line:
+                continue
+            review = json.loads(line)
+            if review.get('business_id') not in restaurant_ids:
+                continue
+
+            text = (review.get('text') or '').strip()
+            stars = review.get('stars')
+            if not text or stars is None:
+                continue
+
+            rows.append({'Rating': int(round(float(stars))), 'Review Text': text})
+            if len(rows) >= max_reviews:
+                break
+
+    if not rows:
+        raise ValueError('No restaurant reviews were loaded from Yelp Open Dataset JSON files.')
+
+    print(f"Loaded {len(rows):,} restaurant reviews from Yelp Open Dataset")
+    return pd.DataFrame(rows)
+
+
+if os.path.exists(OPEN_BUSINESS_PATH) and os.path.exists(OPEN_REVIEW_PATH):
+    data_source = 'yelp_open_json'
+    df = load_restaurant_reviews_from_open_dataset(
+        OPEN_BUSINESS_PATH,
+        OPEN_REVIEW_PATH,
+        MAX_OPEN_REVIEWS
+    )
+else:
+    data_source = 'legacy_csv'
+    print("Yelp Open Dataset JSON files not found; falling back to legacy CSV...")
+    if not os.path.exists(LEGACY_DATASET_PATH):
+        raise FileNotFoundError(
+            "No dataset found. Add Yelp Open Dataset JSON files to Dataset/ or provide Yelp Restaurant Reviews.csv"
+        )
+    df = pd.read_csv(LEGACY_DATASET_PATH)
+
 print(f"Dataset shape: {df.shape}")
 print(f"Columns: {df.columns.tolist()}")
 
@@ -39,6 +105,10 @@ def map_rating_to_sentiment(rating):
     else:  # 4-5
         return 'positive'
 
+df = df.dropna(subset=['Rating', 'Review Text']).copy()
+df['Rating'] = pd.to_numeric(df['Rating'], errors='coerce')
+df = df[df['Rating'].notna()].copy()
+df['Rating'] = df['Rating'].astype(int)
 df['sentiment'] = df['Rating'].apply(map_rating_to_sentiment)
 print(f"\nSentiment distribution:\n{df['sentiment'].value_counts()}")
 
@@ -69,10 +139,8 @@ def preprocess_text(text):
     """Tokenize (simple split) and remove stopwords"""
     # Convert to lowercase
     text = text.lower()
-    # Split on whitespace and punctuation
-    tokens = text.split()
-    # Remove punctuation and non-alphanumeric
-    tokens = [t.strip('.,!?;:\'"') for t in tokens]
+    # Split on punctuation/whitespace for cleaner tokenization
+    tokens = re.split(r"[^a-z0-9]+", text)
     # Remove short tokens and stopwords
     tokens = [t for t in tokens if len(t) > 1 and t not in stop_words]
     return ' '.join(tokens)
@@ -163,6 +231,7 @@ print("Model metadata saved to JSON")
 print("\n" + "="*70)
 print("TRAINING COMPLETE - SUMMARY")
 print("="*70)
+print(f"Dataset Source: {data_source}")
 print(f"Dataset Size: {len(df)} reviews")
 print(f"Training Set: {len(X_train)} | Test Set: {len(X_test)}")
 print(f"Logistic Regression Accuracy: {lr_accuracy:.4f}")

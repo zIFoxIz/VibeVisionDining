@@ -6,7 +6,7 @@
     "neutral",
     "positive"
   ],
-  "accuracy": 0.8660804020100502,
-  "test_size": 3980,
+  "accuracy": 0.8600333333333333,
+  "test_size": 60000,
   "feature_extractor": "TF-IDF"
 }

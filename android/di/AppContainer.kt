@@ -2,12 +2,13 @@ package com.example.vibevision.di
 
 import android.content.Context
 import com.example.vibevision.BuildConfig
-import com.example.vibevision.data.SampleRestaurantData
 import com.example.vibevision.data.cache.MemoryCache
 import com.example.vibevision.data.local.InMemoryLocalDatabase
 import com.example.vibevision.data.local.SharedPreferencesUserProfileStorage
 import com.example.vibevision.data.local.UserProfileStorage
 import com.example.vibevision.data.remote.GooglePlacesRestaurantApiService
+import com.example.vibevision.data.remote.LlmRecommendationService
+import com.example.vibevision.data.remote.OpenAiLlmRecommendationService
 import com.example.vibevision.data.repo.RestaurantRepository
 
 object AppContainer {
@@ -18,7 +19,7 @@ object AppContainer {
     }
 
     private val localDatabase by lazy {
-        InMemoryLocalDatabase(initialRestaurants = SampleRestaurantData.restaurants)
+        InMemoryLocalDatabase(initialRestaurants = emptyList())
     }
 
     private val apiService by lazy {
@@ -27,6 +28,17 @@ object AppContainer {
 
     private val memoryCache by lazy {
         MemoryCache(ttlMs = 180_000L)
+    }
+
+    val llmRecommendationService: LlmRecommendationService? by lazy {
+        if (BuildConfig.OPENAI_API_KEY.isBlank()) {
+            null
+        } else {
+            OpenAiLlmRecommendationService.create(
+                apiKey = BuildConfig.OPENAI_API_KEY,
+                model = BuildConfig.OPENAI_MODEL
+            )
+        }
     }
 
     val userProfileStorage: UserProfileStorage by lazy {

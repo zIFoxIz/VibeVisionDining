@@ -2,6 +2,7 @@ package com.example.vibevision.ui.app
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.vibevision.data.remote.LlmRecommendationService
 import com.example.vibevision.data.repo.RestaurantRepository
 import com.example.vibevision.di.AppContainer
 import com.example.vibevision.domain.HeatmapCalculator
@@ -62,7 +63,7 @@ data class AppState(
     val selectedShareTemplate: String = "Quick",
     val isSearchLoading: Boolean = false,
     val searchErrorMessage: String? = null,
-    val lastScrapeStatus: String = "Never run",
+    val llmRecommendationIds: List<String> = emptyList(),
     val userSubmittedReviews: Map<String, List<Review>> = emptyMap(),
     val vibePreferences: List<VibePreference> = listOf(
         VibePreference("Cozy", true),
@@ -74,36 +75,41 @@ data class AppState(
 )
 
 class AppViewModel(
-    private val repository: RestaurantRepository = AppContainer.restaurantRepository
+    private val repository: RestaurantRepository = AppContainer.restaurantRepository,
+    private val llmRecommendationService: LlmRecommendationService? = AppContainer.llmRecommendationService
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AppState())
     val uiState: StateFlow<AppState> = _uiState.asStateFlow()
+    private val auth = FirebaseAuth.getInstance()
+    private val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+        loadProfileForUser(firebaseAuth.currentUser?.uid, firebaseAuth.currentUser?.email)
+    }
     private var searchJob: Job? = null
+    private var llmRecommendationJob: Job? = null
     private val knownCityChips = listOf(
         "All", "New York", "Los Angeles", "Chicago", "Houston", "Phoenix",
         "Philadelphia", "San Antonio", "San Diego", "Dallas", "Austin", "San Jose"
     )
 
     init {
-        val savedProfile = runCatching { AppContainer.userProfileStorage.loadProfile() }
-            .getOrDefault(UserProfile())
+        auth.addAuthStateListener(authStateListener)
+        loadProfileForUser(auth.currentUser?.uid, auth.currentUser?.email)
 
         viewModelScope.launch {
             runCatching {
-                repository.loadRestaurants(forceRefresh = false)
+                repository.loadRestaurants(forceRefresh = true)
             }.onSuccess { restaurants ->
                 _uiState.value = _uiState.value.copy(
                     restaurants = restaurants,
                     favoriteRestaurantIds = repository.getFavoriteIds(),
                     userSubmittedReviews = repository.getUserReviews(),
-                    userProfile = savedProfile,
                     searchErrorMessage = null
                 )
+                refreshLlmRecommendations()
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     favoriteRestaurantIds = repository.getFavoriteIds(),
                     userSubmittedReviews = repository.getUserReviews(),
-                    userProfile = savedProfile,
                     searchErrorMessage = error.message ?: "Unable to load restaurants right now."
                 )
             }
@@ -125,6 +131,7 @@ class AppViewModel(
             route = AppRoute.DETAIL,
             recentlyViewedIds = updatedRecent
         )
+        refreshLlmRecommendations()
     }
 
     fun updateSearchQuery(query: String) {
@@ -158,6 +165,7 @@ class AppViewModel(
             if (it.vibe == vibe) it.copy(enabled = !it.enabled) else it
         }
         _uiState.value = _uiState.value.copy(vibePreferences = updated)
+        refreshLlmRecommendations()
     }
 
     fun toggleFavorite(restaurantId: String) {
@@ -165,6 +173,7 @@ class AppViewModel(
         val updated = if (current.contains(restaurantId)) current - restaurantId else current + restaurantId
         repository.saveFavoriteIds(updated)
         _uiState.value = _uiState.value.copy(favoriteRestaurantIds = updated)
+        refreshLlmRecommendations()
     }
 
     fun setFilterOverlayVisible(visible: Boolean) {
@@ -215,7 +224,11 @@ class AppViewModel(
     }
 
     fun setOfflineMode(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(isOfflineMode = enabled)
+        _uiState.value = _uiState.value.copy(
+            isOfflineMode = enabled,
+            llmRecommendationIds = if (enabled) emptyList() else _uiState.value.llmRecommendationIds
+        )
+        if (!enabled) refreshLlmRecommendations()
     }
 
     fun setPushNotifications(enabled: Boolean) {
@@ -252,7 +265,7 @@ class AppViewModel(
     }
 
     fun signOut() {
-        runCatching { FirebaseAuth.getInstance().signOut() }
+        runCatching { auth.signOut() }
         _uiState.value = _uiState.value.copy(
             accountActionMessage = "Signed out."
         )
@@ -267,6 +280,7 @@ class AppViewModel(
             userProfile = _uiState.value.userProfile.copy(name = name),
             profileSavedMessage = null
         )
+        refreshLlmRecommendations()
     }
 
     fun setProfileAddress(address: String) {
@@ -288,14 +302,32 @@ class AppViewModel(
             userProfile = _uiState.value.userProfile.copy(email = email),
             profileSavedMessage = null
         )
+        refreshLlmRecommendations()
     }
 
     fun saveUserProfile() {
         val profile = _uiState.value.userProfile
         runCatching {
-            AppContainer.userProfileStorage.saveProfile(profile)
+            AppContainer.userProfileStorage.saveProfile(auth.currentUser?.uid, profile)
         }
         _uiState.value = _uiState.value.copy(profileSavedMessage = "Profile saved")
+    }
+
+    private fun loadProfileForUser(userId: String?, authEmail: String?) {
+        val savedProfile = runCatching { AppContainer.userProfileStorage.loadProfile(userId) }
+            .getOrDefault(UserProfile())
+
+        val mergedEmail = savedProfile.email.ifBlank { authEmail.orEmpty() }
+        _uiState.value = _uiState.value.copy(
+            userProfile = savedProfile.copy(email = mergedEmail),
+            profileSavedMessage = null
+        )
+    }
+
+    override fun onCleared() {
+        llmRecommendationJob?.cancel()
+        auth.removeAuthStateListener(authStateListener)
+        super.onCleared()
     }
 
     fun clearProfileSavedMessage() {
@@ -304,14 +336,6 @@ class AppViewModel(
 
     fun setShareTemplate(template: String) {
         _uiState.value = _uiState.value.copy(selectedShareTemplate = template)
-    }
-
-    fun simulateRealTimeReviewScrape() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                lastScrapeStatus = repository.scrapeReviewStatus(forceRefresh = true)
-            )
-        }
     }
 
     fun submitUserReview(restaurantId: String, text: String, rating: Int, category: ReviewCategory) {
@@ -380,7 +404,20 @@ class AppViewModel(
 
     fun personalizedRecommendations(): List<Restaurant> {
         val state = _uiState.value
+        val byId = filteredRestaurants().associateBy { it.id }
 
+        val llmRanked = state.llmRecommendationIds
+            .mapNotNull { byId[it] }
+            .take(5)
+
+        if (llmRanked.isNotEmpty()) {
+            return llmRanked
+        }
+
+        return heuristicRecommendations(state)
+    }
+
+    private fun heuristicRecommendations(state: AppState): List<Restaurant> {
         return filteredRestaurants()
             .sortedByDescending { restaurant ->
                 val reviews = reviewsForRestaurant(restaurant)
@@ -487,11 +524,40 @@ class AppViewModel(
                 isSearchLoading = false,
                 searchErrorMessage = null
             )
+            refreshLlmRecommendations()
         }.onFailure { error ->
             _uiState.value = _uiState.value.copy(
                 isSearchLoading = false,
                 searchErrorMessage = toFriendlySearchMessage(error)
             )
+        }
+    }
+
+    private fun refreshLlmRecommendations() {
+        val service = llmRecommendationService ?: return
+        val state = _uiState.value
+        if (state.isOfflineMode) return
+
+        val candidates = filteredRestaurants().ifEmpty { state.restaurants }.take(40)
+        if (candidates.isEmpty()) {
+            _uiState.value = _uiState.value.copy(llmRecommendationIds = emptyList())
+            return
+        }
+
+        llmRecommendationJob?.cancel()
+        llmRecommendationJob = viewModelScope.launch {
+            runCatching {
+                service.recommendRestaurantIds(
+                    restaurants = candidates,
+                    profile = _uiState.value.userProfile,
+                    vibePreferences = _uiState.value.vibePreferences,
+                    favoriteIds = _uiState.value.favoriteRestaurantIds,
+                    recentlyViewedIds = _uiState.value.recentlyViewedIds,
+                    maxResults = 5
+                )
+            }.onSuccess { ids ->
+                _uiState.value = _uiState.value.copy(llmRecommendationIds = ids)
+            }
         }
     }
 

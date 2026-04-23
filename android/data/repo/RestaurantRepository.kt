@@ -14,7 +14,6 @@ class RestaurantRepository(
     private val cache: MemoryCache
 ) {
     private val restaurantsCacheKey = "restaurants:list"
-    private val scrapeStatusKey = "scrape:status"
 
     suspend fun loadRestaurants(forceRefresh: Boolean = false): List<Restaurant> {
         if (!forceRefresh) {
@@ -37,15 +36,6 @@ class RestaurantRepository(
 
     fun saveFavoriteIds(ids: Set<String>) {
         localDatabase.saveFavoriteIds(ids)
-    }
-
-    suspend fun scrapeReviewStatus(forceRefresh: Boolean = true): String {
-        if (!forceRefresh) {
-            cache.get<String>(scrapeStatusKey)?.let { return it }
-        }
-        val status = api.scrapeReviewStatus()
-        cache.put(scrapeStatusKey, status)
-        return status
     }
 
     suspend fun searchRestaurants(

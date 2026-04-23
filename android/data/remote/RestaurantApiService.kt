@@ -18,12 +18,7 @@ interface RestaurantApiService {
         latitude: Double? = null,
         longitude: Double? = null
     ): List<Restaurant>
-    suspend fun scrapeReviewStatus(): String
 }
-
-data class ScrapeStatusResponse(
-    val status: String
-)
 
 data class PlacesSearchResponse(
     val results: List<PlacesSearchResult> = emptyList(),
@@ -31,10 +26,11 @@ data class PlacesSearchResponse(
 )
 
 data class PlacesSearchResult(
-    val place_id: String,
-    val name: String,
-    val formatted_address: String,
-    val types: List<String> = emptyList(),
+    val place_id: String? = null,
+    val name: String? = null,
+    val formatted_address: String? = null,
+    val vicinity: String? = null,
+    val types: List<String>? = null,
     val price_level: Int? = null,
     val rating: Double? = null,
     val geometry: PlacesGeometry? = null
@@ -79,9 +75,6 @@ data class ApiRestaurant(
 private interface RestaurantBackendApi {
     @GET("restaurants")
     suspend fun fetchRestaurants(): List<ApiRestaurant>
-
-    @GET("reviews/scrape-status")
-    suspend fun scrapeReviewStatus(): ScrapeStatusResponse
 }
 
 private interface GooglePlacesApi {
@@ -136,10 +129,6 @@ class RealRestaurantApiService private constructor(
                 }
             )
         }
-    }
-
-    override suspend fun scrapeReviewStatus(): String {
-        return backendApi.scrapeReviewStatus().status
     }
 
     override suspend fun searchRestaurants(
@@ -243,17 +232,15 @@ class GooglePlacesRestaurantApiService private constructor(
         }
     }
 
-    override suspend fun scrapeReviewStatus(): String {
-        val now = System.currentTimeMillis()
-        return "Google Places sync completed at $now"
-    }
-
     private fun PlacesSearchResult.toRestaurant(): Restaurant {
-        val cityName = extractCity(formatted_address)
-        val cuisineGuess = inferCuisine(types)
+        val addressText = formatted_address ?: vicinity
+        val cityName = extractCity(addressText)
+        val cuisineGuess = inferCuisine(types.orEmpty())
         val price = (price_level ?: 2).coerceIn(1, 4)
         val ratingValue = (rating ?: 4.0).coerceIn(1.0, 5.0)
-        val roundedRating = ratingValue.toInt().coerceIn(1, 5)
+        val safeName = name?.takeIf { it.isNotBlank() } ?: "Unnamed Restaurant"
+        val safePlaceId = place_id?.takeIf { it.isNotBlank() }
+            ?: "gm_${safeName.lowercase().replace(" ", "_")}_${cityName.lowercase().replace(" ", "_")}"
         val vibeTags = buildList {
             add(if (ratingValue >= 4.3) "Popular" else "Hidden Gem")
             add(if (price >= 3) "Date Night" else "Casual")
@@ -261,30 +248,21 @@ class GooglePlacesRestaurantApiService private constructor(
         }.distinct()
 
         return Restaurant(
-            id = place_id,
-            name = name,
+            id = safePlaceId,
+            name = safeName,
             city = cityName,
             cuisine = cuisineGuess,
             priceLevel = price,
             vibeTags = vibeTags,
-            photoLabels = listOf("Google Maps Listing"),
-            menuPreview = listOf("Menu available on Google Maps"),
-            reviews = listOf(
-                Review(
-                    id = "gm_$place_id",
-                    text = "Imported from Google Places listing for discovery.",
-                    rating = roundedRating,
-                    category = ReviewCategory.FOOD
-                )
-            ),
-            dishSentiments = listOf(
-                DishSentiment("Popular Item", positive = 8, neutral = 2, negative = 1)
-            )
+            photoLabels = emptyList(),
+            menuPreview = emptyList(),
+            reviews = emptyList(),
+            dishSentiments = emptyList()
         )
     }
 
-    private fun extractCity(address: String): String {
-        val parts = address.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    private fun extractCity(address: String?): String {
+        val parts = address.orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() }
         return when {
             parts.size >= 4 -> parts[parts.size - 3]
             parts.size >= 2 -> parts[parts.size - 2]
