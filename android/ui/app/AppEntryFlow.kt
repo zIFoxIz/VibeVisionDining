@@ -532,10 +532,15 @@ private suspend fun performFirebaseAuth(
     runCatching { action() }
         .onSuccess { onSuccess() }
         .onFailure { error ->
-            val message = if (alwaysUseSignInError) {
+            val friendlyMessage = toFriendlyAuthError(error)
+            val credentialFailure = friendlyMessage.equals("Invalid email or password.", ignoreCase = true) ||
+                friendlyMessage.equals("Incorrect password. Tap Forgot Password to reset it.", ignoreCase = true) ||
+                friendlyMessage.equals("No account found for that email. Use Create Account first.", ignoreCase = true)
+
+            val message = if (alwaysUseSignInError && credentialFailure) {
                 "Email or password is incorrect."
             } else {
-                toFriendlyAuthError(error)
+                friendlyMessage
             }
             onError(message)
         }

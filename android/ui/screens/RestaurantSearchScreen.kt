@@ -15,11 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -50,7 +48,7 @@ import com.example.vibevision.ui.components.RestaurantCard
 import com.example.vibevision.ui.components.RestaurantCardVariant
 import com.example.vibevision.ui.components.SectionHeader
 import kotlinx.coroutines.launch
-import kotlin.math.max
+
 
 @Composable
 fun RestaurantSearchScreen(
@@ -83,18 +81,10 @@ fun RestaurantSearchScreen(
     onShowAllRestaurants: () -> Unit
 ) {
     val resultsState = rememberLazyListState()
-    val cityChipsState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var locationError by remember { mutableStateOf<String?>(null) }
     val hasActiveSearch = query.isNotBlank() || selectedCity != "All"
-
-    LaunchedEffect(selectedCity, availableCities) {
-        val selectedIndex = availableCities.indexOfFirst { it.equals(selectedCity, ignoreCase = true) }
-        if (selectedIndex >= 0) {
-            cityChipsState.animateScrollToItem(max(0, selectedIndex - 1))
-        }
-    }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -122,27 +112,13 @@ fun RestaurantSearchScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-        SectionHeader(title = "Restaurant Search", subtitle = "Filter by city, cuisine, vibe, and price")
-
-        Text(text = "Multi-City Support")
-        LazyRow(
-            state = cityChipsState,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(availableCities) { city ->
-                AssistChip(
-                    onClick = { onSetCity(city) },
-                    label = { Text(city) },
-                    leadingIcon = { Text(if (selectedCity == city) "*" else "") }
-                )
-            }
-        }
+        SectionHeader(title = "Restaurant Search", subtitle = "Search and filter restaurants")
 
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search by name, cuisine, or vibe") }
+            placeholder = { Text("Search by city, name, or address") }
         )
 
         Button(onClick = onSearchNow, enabled = !isLoading, modifier = Modifier.fillMaxWidth()) {
@@ -177,7 +153,7 @@ fun RestaurantSearchScreen(
         }
 
         Button(onClick = onToggleOverlay, enabled = !isLoading, modifier = Modifier.fillMaxWidth()) {
-            Text(if (showFilterOverlay) "Hide Filter Overlay" else "Show Filter Overlay")
+            Text(if (showFilterOverlay) "Hide Filters" else "Filter Results")
         }
 
         Button(onClick = onShowAllRestaurants, enabled = !isLoading, modifier = Modifier.fillMaxWidth()) {
@@ -185,7 +161,7 @@ fun RestaurantSearchScreen(
         }
 
         Text(
-            text = "${restaurants.size} result(s) in $selectedCity",
+            text = "${restaurants.size} result(s)",
             fontWeight = FontWeight.SemiBold
         )
 

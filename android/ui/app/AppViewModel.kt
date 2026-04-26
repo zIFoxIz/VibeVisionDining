@@ -65,14 +65,19 @@ data class AppState(
     val searchErrorMessage: String? = null,
     val llmRecommendationIds: List<String> = emptyList(),
     val userSubmittedReviews: Map<String, List<Review>> = emptyMap(),
-    val vibePreferences: List<VibePreference> = listOf(
-        VibePreference("Cozy", true),
-        VibePreference("Energetic", true),
+    val vibePreferences: List<VibePreference> = defaultVibePreferences()
+)
+
+private fun defaultVibePreferences(): List<VibePreference> {
+    return listOf(
+        VibePreference("Popular", true),
+        VibePreference("Hidden Gem", true),
+        VibePreference("Date Night", true),
+        VibePreference("Casual", true),
         VibePreference("Family", true),
-        VibePreference("Romantic", false),
         VibePreference("Modern", true)
     )
-)
+}
 
 class AppViewModel(
     private val repository: RestaurantRepository = AppContainer.restaurantRepository,
@@ -105,6 +110,7 @@ class AppViewModel(
                     userSubmittedReviews = repository.getUserReviews(),
                     searchErrorMessage = null
                 )
+                syncVibeOptionsWithRestaurants(restaurants)
                 refreshLlmRecommendations()
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
@@ -376,9 +382,21 @@ class AppViewModel(
         return (knownCityChips + dynamic).distinct()
     }
 
-    fun allVibes(): List<String> = _uiState.value.restaurants.flatMap { it.vibeTags }.distinct().sorted()
+    fun allVibes(): List<String> {
+        val state = _uiState.value
+        return mergeDistinctVibes(
+            preferred = state.vibePreferences.map { it.vibe },
+            discovered = state.restaurants.flatMap { it.vibeTags }
+        )
+    }
 
-    fun allPriceLevels(): List<Int> = _uiState.value.restaurants.map { it.priceLevel }.distinct().sorted()
+    fun allPriceLevels(): List<Int> {
+        return _uiState.value.restaurants
+            .filter { it.hasLivePriceLevel }
+            .map { it.priceLevel }
+            .distinct()
+            .sorted()
+    }
 
     fun filteredRestaurants(): List<Restaurant> {
         val state = _uiState.value
@@ -393,10 +411,14 @@ class AppViewModel(
                     r.vibeTags.any { it.lowercase().contains(query) }
 
             val matchesCuisine = state.selectedCuisineFilters.isEmpty() || state.selectedCuisineFilters.contains(r.cuisine)
-            val matchesPrice = state.selectedPriceFilters.isEmpty() || state.selectedPriceFilters.contains(r.priceLevel)
+            val matchesPrice =
+                state.selectedPriceFilters.isEmpty() ||
+                    (r.hasLivePriceLevel && state.selectedPriceFilters.contains(r.priceLevel))
             val matchesVibe =
                 state.selectedVibeFilters.isEmpty() ||
-                    r.vibeTags.any { vibe -> state.selectedVibeFilters.contains(vibe) }
+                    r.vibeTags.any { vibe ->
+                        state.selectedVibeFilters.any { selected -> selected.equals(vibe, ignoreCase = true) }
+                    }
 
             matchesCity && matchesQuery && matchesCuisine && matchesPrice && matchesVibe
         }
@@ -479,6 +501,27 @@ class AppViewModel(
         )
     }
 
+    fun vibeLeaderboard(): List<Pair<Restaurant, Float>> {
+        return _uiState.value.restaurants
+            .map { it to vibeMatchScore(it) }
+            .sortedByDescending { it.second }
+            .take(3)
+    }
+
+    fun hiddenGemsSpotlight(): List<Restaurant> {
+        val favIds = _uiState.value.favoriteRestaurantIds
+        return _uiState.value.restaurants
+            .filter { r ->
+                r.vibeTags.any { it.equals("Hidden Gem", ignoreCase = true) } &&
+                    !favIds.contains(r.id)
+            }
+            .sortedByDescending { r ->
+                val reviews = reviewsForRestaurant(r)
+                if (reviews.isEmpty()) 0.0 else reviews.map { it.rating }.average()
+            }
+            .take(3)
+    }
+
     fun analyticsSnapshot(): AnalyticsSnapshot {
         val restaurants = _uiState.value.restaurants
         val allReviews = restaurants.flatMap { reviewsForRestaurant(it) }
@@ -494,6 +537,24 @@ class AppViewModel(
             topCity = topCity,
             topCuisine = topCuisine
         )
+    }
+
+    fun homeFeedSummary(): String {
+        val restaurants = _uiState.value.restaurants
+        if (restaurants.isEmpty()) {
+            return "No live restaurant results loaded yet. Run a search to fetch places data."
+        }
+
+        val reviews = restaurants.flatMap { reviewsForRestaurant(it) }
+        val avgRating = if (reviews.isNotEmpty()) reviews.map { it.rating }.average() else 0.0
+        val topCuisine = restaurants.groupingBy { it.cuisine }.eachCount().maxByOrNull { it.value }?.key ?: "Unknown"
+        val pricedCount = restaurants.count { it.hasLivePriceLevel }
+
+        return if (reviews.isNotEmpty()) {
+            "Live trend: ${String.format("%.1f", avgRating)}/5 avg rating across ${reviews.size} review(s). Top cuisine in current results: $topCuisine. Live price tiers available for $pricedCount of ${restaurants.size} restaurants."
+        } else {
+            "Live trend: ${restaurants.size} restaurants loaded. Top cuisine in current results: $topCuisine. Live price tiers available for $pricedCount of ${restaurants.size} restaurants."
+        }
     }
 
     private fun triggerSearchDebounced() {
@@ -524,6 +585,7 @@ class AppViewModel(
                 isSearchLoading = false,
                 searchErrorMessage = null
             )
+            syncVibeOptionsWithRestaurants(restaurants)
             refreshLlmRecommendations()
         }.onFailure { error ->
             _uiState.value = _uiState.value.copy(
@@ -576,4 +638,47 @@ class AppViewModel(
             else -> "Could not load restaurants right now."
         }
     }
+
+    private fun syncVibeOptionsWithRestaurants(restaurants: List<Restaurant>) {
+        val state = _uiState.value
+        val discovered = restaurants.flatMap { it.vibeTags }
+        val mergedVibes = mergeDistinctVibes(
+            preferred = state.vibePreferences.map { it.vibe },
+            discovered = discovered
+        )
+
+        val existingByKey = state.vibePreferences.associateBy { normalizeVibeKey(it.vibe) }
+        val mergedPreferences = mergedVibes.map { vibe ->
+            existingByKey[normalizeVibeKey(vibe)]?.copy(vibe = vibe) ?: VibePreference(vibe, false)
+        }
+
+        val availableKeys = mergedPreferences.map { normalizeVibeKey(it.vibe) }.toSet()
+        val sanitizedSelectedFilters = state.selectedVibeFilters
+            .filter { availableKeys.contains(normalizeVibeKey(it)) }
+            .toSet()
+
+        _uiState.value = state.copy(
+            vibePreferences = mergedPreferences,
+            selectedVibeFilters = sanitizedSelectedFilters
+        )
+    }
+
+    private fun mergeDistinctVibes(preferred: List<String>, discovered: List<String>): List<String> {
+        val result = mutableListOf<String>()
+        val seen = mutableSetOf<String>()
+
+        (preferred + discovered)
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .forEach { vibe ->
+                val key = normalizeVibeKey(vibe)
+                if (seen.add(key)) {
+                    result.add(vibe)
+                }
+            }
+
+        return result
+    }
+
+    private fun normalizeVibeKey(value: String): String = value.trim().lowercase()
 }

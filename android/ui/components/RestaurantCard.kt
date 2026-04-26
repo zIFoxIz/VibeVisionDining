@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import java.util.Locale
 import com.example.vibevision.model.Restaurant
 import com.example.vibevision.ui.theme.CardCompact
 import com.example.vibevision.ui.theme.CardFeatured
@@ -56,7 +57,13 @@ fun RestaurantCard(
                 }
             }
             if (variant != RestaurantCardVariant.COMPACT) {
-                Text(text = "${restaurant.cuisine} • ${"$".repeat(restaurant.priceLevel)}")
+                Text(text = "${restaurant.cuisine} • ${formatPriceTier(restaurant)} • ${formatPrice(restaurant)}")
+                Text(text = pricingConfidenceLabel(restaurant), fontWeight = FontWeight.SemiBold)
+            }
+            if (variant != RestaurantCardVariant.COMPACT) {
+                topDishesLabel(restaurant)?.let { topLabel ->
+                    Text(text = topLabel)
+                }
             }
             Text(text = restaurant.city)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -66,4 +73,49 @@ fun RestaurantCard(
             }
         }
     }
+}
+
+private fun formatPrice(restaurant: Restaurant): String {
+    val avg = restaurant.avgPricePerPersonUsd
+    return if (avg != null) {
+        String.format(Locale.US, "$%.0f avg/person", avg)
+    } else {
+        "Price unavailable"
+    }
+}
+
+private fun formatPriceTier(restaurant: Restaurant): String {
+    return if (restaurant.hasLivePriceLevel) {
+        "$".repeat(restaurant.priceLevel)
+    } else {
+        "Tier unavailable"
+    }
+}
+
+private fun pricingConfidenceLabel(restaurant: Restaurant): String {
+    if (!restaurant.hasLivePriceLevel) return "Pricing confidence: No price data"
+
+    return when {
+        restaurant.avgPricePerPersonUsd == null -> "Pricing confidence: Live tier"
+        restaurant.isAvgPriceEstimated -> "Pricing confidence: Live tier and estimated avg"
+        else -> "Pricing confidence: Live tier and verified avg"
+    }
+}
+
+private fun topDishesLabel(restaurant: Restaurant): String? {
+    val fromSentiment = restaurant.dishSentiments
+        .sortedByDescending { it.positive }
+        .take(2)
+        .map { it.dishName }
+
+    if (fromSentiment.isNotEmpty()) {
+        return "Top dishes: ${fromSentiment.joinToString()}"
+    }
+
+    val fromMenu = restaurant.menuPreview.take(2)
+    if (fromMenu.isNotEmpty()) {
+        return "Menu highlights: ${fromMenu.joinToString()}"
+    }
+
+    return null
 }

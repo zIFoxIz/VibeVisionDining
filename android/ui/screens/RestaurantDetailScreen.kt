@@ -181,9 +181,13 @@ fun RestaurantDetailScreen(
         item {
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "Menu Preview Section", fontWeight = FontWeight.SemiBold)
-                    restaurant.menuPreview.forEach { item ->
-                        Text(text = "- $item")
+                    Text(text = "Live Menu Highlights", fontWeight = FontWeight.SemiBold)
+                    if (restaurant.menuPreview.isEmpty()) {
+                        Text(text = "No live menu highlights available for this place yet.")
+                    } else {
+                        restaurant.menuPreview.forEach { item ->
+                            Text(text = "- $item")
+                        }
                     }
                 }
             }

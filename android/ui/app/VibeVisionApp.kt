@@ -244,7 +244,7 @@ fun VibeVisionApp(
                             favoriteIds = state.favoriteRestaurantIds,
                             recommendations = appViewModel.personalizedRecommendations(),
                             isOfflineMode = state.isOfflineMode,
-                            aiSummary = "Overall trend is positive, with strongest sentiment around food quality and service.",
+                            aiSummary = appViewModel.homeFeedSummary(),
                             onRestaurantClick = { restaurant ->
                                 appViewModel.openRestaurantDetail(restaurant)
                                 navController.navigate(AppDestination.Detail.route)
@@ -295,7 +295,11 @@ fun VibeVisionApp(
                     composable(AppDestination.Insights.route) {
                         AdvancedAnalyticsDashboardScreen(
                             snapshot = appViewModel.analyticsSnapshot(),
-                            recommendations = appViewModel.personalizedRecommendations()
+                            recommendations = appViewModel.personalizedRecommendations(),
+                            vibeLeaderboard = appViewModel.vibeLeaderboard(),
+                            hiddenGems = appViewModel.hiddenGemsSpotlight(),
+                            recentlyViewed = appViewModel.recentlyViewedRestaurants(),
+                            onRestaurantClick = { appViewModel.openRestaurantDetail(it) }
                         )
                     }
 

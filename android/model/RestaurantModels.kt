@@ -33,11 +33,14 @@ data class Restaurant(
     val city: String,
     val cuisine: String,
     val priceLevel: Int,
+    val hasLivePriceLevel: Boolean = true,
+    val isAvgPriceEstimated: Boolean = false,
     val vibeTags: List<String>,
     val photoLabels: List<String>,
     val menuPreview: List<String>,
     val reviews: List<Review>,
-    val dishSentiments: List<DishSentiment>
+    val dishSentiments: List<DishSentiment>,
+    val avgPricePerPersonUsd: Double? = null
 )
 
 data class VibePreference(
