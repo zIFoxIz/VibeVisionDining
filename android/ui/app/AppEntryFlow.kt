@@ -1,5 +1,6 @@
 package com.example.vibevision.ui.app
 
+import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -61,13 +62,18 @@ import com.example.vibevision.ui.theme.WarmOrange
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
+private const val TUTORIAL_PREFS_NAME = "vibevision_tutorial"
+private const val TUTORIAL_KEY_PREFIX = "completed_"
+
 private enum class EntryStage {
     WELCOME,
     AUTH,
+    TUTORIAL,
     APP
 }
 
@@ -79,6 +85,9 @@ private enum class AuthMode {
 @Composable
 fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
     val context = LocalContext.current
+    val onboardingPrefs = remember(context) {
+        context.getSharedPreferences(TUTORIAL_PREFS_NAME, Context.MODE_PRIVATE)
+    }
     val firebaseConfigured = remember {
         runCatching {
             FirebaseApp.getApps(context).isNotEmpty() ||
@@ -90,23 +99,38 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
     val auth = remember(firebaseConfigured) { if (firebaseConfigured) FirebaseAuth.getInstance() else null }
     val scope = rememberCoroutineScope()
     var stage by rememberSaveable { mutableStateOf(EntryStage.WELCOME) }
+    var openVibeSetupOnLaunch by rememberSaveable { mutableStateOf(false) }
     var authLoading by rememberSaveable { mutableStateOf(false) }
     var authError by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(stage) {
         if (stage == EntryStage.WELCOME) {
             delay(5000)
-            stage = if (auth?.currentUser != null) EntryStage.APP else EntryStage.AUTH
+            val currentUser = auth?.currentUser
+            if (currentUser != null) {
+                val completedTutorial = hasCompletedTutorial(onboardingPrefs, currentUser)
+                openVibeSetupOnLaunch = false
+                stage = if (completedTutorial) EntryStage.APP else EntryStage.TUTORIAL
+            } else {
+                stage = EntryStage.AUTH
+            }
         }
     }
 
-    DisposableEffect(auth) {
+    DisposableEffect(auth, stage, onboardingPrefs) {
         if (auth == null) {
             onDispose { }
         } else {
             val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
-                if (stage != EntryStage.WELCOME) {
-                    stage = if (firebaseAuth.currentUser != null) EntryStage.APP else EntryStage.AUTH
+                if (firebaseAuth.currentUser == null) {
+                    openVibeSetupOnLaunch = false
+                    if (stage != EntryStage.WELCOME) {
+                        stage = EntryStage.AUTH
+                    }
+                } else if (stage == EntryStage.AUTH || stage == EntryStage.APP) {
+                    val completedTutorial = hasCompletedTutorial(onboardingPrefs, firebaseAuth.currentUser)
+                    openVibeSetupOnLaunch = false
+                    stage = if (completedTutorial) EntryStage.APP else EntryStage.TUTORIAL
                 }
             }
             auth.addAuthStateListener(listener)
@@ -142,7 +166,16 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
                 scope.launch {
                     performFirebaseAuth(
                         action = { authRef.signInAnonymously().await() },
-                        onSuccess = { stage = EntryStage.APP },
+                        onSuccess = {
+                            val completedTutorial = hasCompletedTutorial(onboardingPrefs, authRef.currentUser)
+                            if (completedTutorial) {
+                                openVibeSetupOnLaunch = false
+                                stage = EntryStage.APP
+                            } else {
+                                openVibeSetupOnLaunch = true
+                                stage = EntryStage.TUTORIAL
+                            }
+                        },
                         onError = { authError = it },
                         onComplete = { authLoading = false }
                     )
@@ -194,7 +227,16 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
 
                     performFirebaseAuth(
                         action = action,
-                        onSuccess = { stage = EntryStage.APP },
+                        onSuccess = {
+                            val completedTutorial = hasCompletedTutorial(onboardingPrefs, authRef.currentUser)
+                            if (completedTutorial) {
+                                openVibeSetupOnLaunch = false
+                                stage = EntryStage.APP
+                            } else {
+                                openVibeSetupOnLaunch = mode == AuthMode.CREATE
+                                stage = EntryStage.TUTORIAL
+                            }
+                        },
                         onError = { authError = it },
                         onComplete = { authLoading = false },
                         alwaysUseSignInError = mode == AuthMode.LOGIN
@@ -205,11 +247,119 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
     }
 
     AnimatedVisibility(
+        visible = stage == EntryStage.TUTORIAL,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        PostAuthTutorialScreen(
+            onSetUpVibes = {
+                setTutorialCompleted(onboardingPrefs, auth?.currentUser)
+                openVibeSetupOnLaunch = true
+                stage = EntryStage.APP
+            },
+            onSkip = {
+                setTutorialCompleted(onboardingPrefs, auth?.currentUser)
+                openVibeSetupOnLaunch = false
+                stage = EntryStage.APP
+            }
+        )
+    }
+
+    AnimatedVisibility(
         visible = stage == EntryStage.APP,
         enter = fadeIn(),
         exit = fadeOut()
     ) {
-        VibeVisionApp(analyzer = analyzer)
+        VibeVisionApp(
+            analyzer = analyzer,
+            startInVibeSetup = openVibeSetupOnLaunch,
+            onStartDestinationConsumed = { openVibeSetupOnLaunch = false }
+        )
+    }
+}
+
+@Composable
+private fun PostAuthTutorialScreen(
+    onSetUpVibes: () -> Unit,
+    onSkip: () -> Unit
+) {
+    VibeVisionTheme(darkTheme = false) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFFFFF7EA),
+                            Color(0xFFF8E8D3),
+                            Color(0xFFE7F2EE)
+                        )
+                    )
+                )
+                .padding(20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "How VibeVision Works",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = InkBlue,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "1. Set your vibe preferences first.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = InkBlue.copy(alpha = 0.9f)
+                    )
+                    Text(
+                        text = "2. Search restaurants by city, name, or address.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = InkBlue.copy(alpha = 0.9f)
+                    )
+                    Text(
+                        text = "3. Use Insights and sentiment summaries to pick your best match.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = InkBlue.copy(alpha = 0.9f)
+                    )
+
+                    Button(
+                        onClick = onSetUpVibes,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = InkBlue)
+                    ) {
+                        Text("Set Up My Vibes")
+                    }
+
+                    Button(
+                        onClick = onSkip,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE8F0ED),
+                            contentColor = InkBlue
+                        )
+                    ) {
+                        Text("Skip for Now")
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -575,6 +725,25 @@ private fun toFriendlyAuthError(error: Throwable): String {
         raw.isNotBlank() -> raw
         else -> "Authentication failed."
     }
+}
+
+private fun tutorialIdentity(user: FirebaseUser?): String {
+    return if (user == null || user.isAnonymous) {
+        "guest_device"
+    } else {
+        "user_${user.uid}"
+    }
+}
+
+private fun tutorialCompletionKey(user: FirebaseUser?): String =
+    "$TUTORIAL_KEY_PREFIX${tutorialIdentity(user)}"
+
+private fun hasCompletedTutorial(prefs: android.content.SharedPreferences, user: FirebaseUser?): Boolean {
+    return prefs.getBoolean(tutorialCompletionKey(user), false)
+}
+
+private fun setTutorialCompleted(prefs: android.content.SharedPreferences, user: FirebaseUser?) {
+    prefs.edit().putBoolean(tutorialCompletionKey(user), true).apply()
 }
 
 private fun initializeFirebaseFromBuildConfig(context: android.content.Context): Boolean {

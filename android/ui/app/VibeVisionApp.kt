@@ -89,6 +89,8 @@ private fun AppDestination.toAppRoute(): AppRoute = when (this) {
 @Composable
 fun VibeVisionApp(
     analyzer: ReviewSentimentPredictor,
+    startInVibeSetup: Boolean = false,
+    onStartDestinationConsumed: () -> Unit = {},
     appViewModel: AppViewModel = viewModel()
 ) {
     val state by appViewModel.uiState.collectAsStateWithLifecycle()
@@ -97,7 +99,9 @@ fun VibeVisionApp(
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val startDestination = remember { state.route.toDestination().route }
+    val startDestination = remember {
+        if (startInVibeSetup) AppDestination.VibeSetup.route else state.route.toDestination().route
+    }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -140,6 +144,10 @@ fun VibeVisionApp(
     }
     val isPrimaryRoute = primaryDestinations.any { it.route == currentRoute }
     val showBackButton = !isPrimaryRoute
+
+    androidx.compose.runtime.LaunchedEffect(startInVibeSetup) {
+        if (startInVibeSetup) onStartDestinationConsumed()
+    }
 
     VibeVisionTheme(darkTheme = state.isDarkMode) {
         fun navigateTo(destination: AppDestination) {
@@ -360,7 +368,6 @@ fun VibeVisionApp(
                                 vibeMatchDescription = appViewModel.vibeMatchExplanation(restaurant),
                                 heatmapScores = appViewModel.heatmapForRestaurant(restaurant),
                                 aiSummary = appViewModel.aiGeneratedSummary(restaurant),
-                                timeline = appViewModel.restaurantVibeTimeline(restaurant),
                                 selectedShareTemplate = state.selectedShareTemplate,
                                 onFavoriteToggle = { appViewModel.toggleFavorite(restaurant.id) },
                                 onShareRestaurantCard = {

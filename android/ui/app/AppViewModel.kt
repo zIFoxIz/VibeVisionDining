@@ -480,25 +480,74 @@ class AppViewModel(
 
     fun aiGeneratedSummary(restaurant: Restaurant): String {
         val reviews = reviewsForRestaurant(restaurant)
-        val avg = if (reviews.isNotEmpty()) reviews.map { it.rating }.average() else 0.0
-        val sentimentWord = when {
-            avg >= 4.2 -> "strongly positive"
-            avg >= 3.4 -> "mostly positive"
-            avg >= 2.7 -> "mixed"
+        val highlightDishes = restaurant.dishSentiments
+            .sortedByDescending { dish ->
+                val mentions = dish.positive + dish.neutral + dish.negative
+                (dish.positive - dish.negative) * 2 + mentions
+            }
+            .map { it.dishName }
+            .take(2)
+            .ifEmpty { restaurant.menuPreview.take(2) }
+
+        if (reviews.isEmpty()) {
+            val highlightText = if (highlightDishes.isNotEmpty()) {
+                highlightDishes.joinToString(" and ")
+            } else {
+                "its menu highlights"
+            }
+            return "AI summary: ${restaurant.name} in ${restaurant.city} has limited live review text so far. Early signals suggest interest in $highlightText."
+        }
+
+        val sentiment = restaurantSentimentAggregation(restaurant)
+        val positivePct = String.format("%.0f", sentiment.positiveReviewRatio * 100)
+        val negativePct = String.format("%.0f", sentiment.negativeReviewRatio * 100)
+
+        val dominantCategory = reviews
+            .groupingBy { it.category }
+            .eachCount()
+            .maxByOrNull { it.value }
+            ?.key
+
+        val concernCategory = reviews
+            .filter { it.rating <= 2 }
+            .groupingBy { it.category }
+            .eachCount()
+            .maxByOrNull { it.value }
+            ?.key
+
+        val categoryFocus = when (dominantCategory) {
+            ReviewCategory.FOOD -> "food quality"
+            ReviewCategory.SERVICE -> "service experience"
+            ReviewCategory.ATMOSPHERE -> "atmosphere"
+            ReviewCategory.VALUE -> "value for price"
+            null -> "overall dining experience"
+        }
+
+        val concernText = when (concernCategory) {
+            ReviewCategory.FOOD -> "Most low-score notes mention food consistency."
+            ReviewCategory.SERVICE -> "Most low-score notes mention service speed or attentiveness."
+            ReviewCategory.ATMOSPHERE -> "Most low-score notes mention atmosphere or noise."
+            ReviewCategory.VALUE -> "Most low-score notes mention price-to-value expectations."
+            null -> ""
+        }
+
+        val highlightsText = if (highlightDishes.isNotEmpty()) {
+            highlightDishes.joinToString(" and ")
+        } else {
+            "popular menu items"
+        }
+
+        val sentimentTone = when {
+            sentiment.averageRating >= 4.3f -> "strong"
+            sentiment.averageRating >= 3.6f -> "mostly positive"
+            sentiment.averageRating >= 2.8f -> "mixed"
             else -> "critical"
         }
-        return "AI summary: ${restaurant.name} in ${restaurant.city} shows $sentimentWord review signals, with top mentions around ${restaurant.dishSentiments.firstOrNull()?.dishName ?: "house dishes"}."
-    }
 
-    fun restaurantVibeTimeline(restaurant: Restaurant): List<String> {
-        val reviews = reviewsForRestaurant(restaurant)
-        val recentCount = reviews.size
-        return listOf(
-            "Q1: Launch sentiment baseline collected",
-            "Q2: Vibe tags stabilized (${restaurant.vibeTags.joinToString()})",
-            "Q3: Community momentum increased ($recentCount tracked reviews)",
-            "Q4: Recommendation readiness in progress"
-        )
+        val baseSummary =
+            "AI summary: ${restaurant.name} is showing $sentimentTone sentiment (${String.format("%.1f", sentiment.averageRating)}/5 avg, $positivePct% positive vs $negativePct% negative). Reviews focus most on $categoryFocus, with frequent mentions of $highlightsText."
+
+        return if (concernText.isNotBlank()) "$baseSummary $concernText" else baseSummary
     }
 
     fun vibeLeaderboard(): List<Pair<Restaurant, Float>> {

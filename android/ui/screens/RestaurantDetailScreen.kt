@@ -57,7 +57,6 @@ fun RestaurantDetailScreen(
     vibeMatchDescription: String,
     heatmapScores: Map<String, Float>,
     aiSummary: String,
-    timeline: List<String>,
     selectedShareTemplate: String,
     onFavoriteToggle: () -> Unit,
     onShareRestaurantCard: () -> Unit,
@@ -215,17 +214,6 @@ fun RestaurantDetailScreen(
 
         item {
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(text = "Restaurant Vibe Timeline", fontWeight = FontWeight.SemiBold)
-                    timeline.forEach { point ->
-                        Text(text = "- $point")
-                    }
-                }
-            }
-        }
-
-        item {
-            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(text = "Emotion Heatmap", fontWeight = FontWeight.SemiBold)
                     EmotionHeatmap(scores = heatmapScores)
@@ -266,40 +254,7 @@ fun RestaurantDetailScreen(
         item {
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "Review Sorting Options", fontWeight = FontWeight.SemiBold)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(listOf("Highest", "Lowest")) { option ->
-                            AssistChip(
-                                onClick = { sortOption = option },
-                                label = { Text(option) },
-                                leadingIcon = { Text(if (sortOption == option) "*" else "") }
-                            )
-                        }
-                    }
-
-                    Text(text = "Review Category Filters", fontWeight = FontWeight.SemiBold)
-                    val categories = listOf("All") + ReviewCategory.entries.map { it.name.lowercase().replaceFirstChar { c -> c.titlecase() } }
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(categories) { category ->
-                            AssistChip(
-                                onClick = { selectedCategory = category },
-                                label = { Text(category) },
-                                leadingIcon = { Text(if (selectedCategory == category) "*" else "") }
-                            )
-                        }
-                    }
-
-                    filteredReviews.forEach { review ->
-                        ReviewCard(review = review, variant = ReviewCardVariant.DETAILED)
-                    }
-                }
-            }
-        }
-
-        item {
-            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "User Review Submission", fontWeight = FontWeight.SemiBold)
+                    Text(text = "Leave a Review", fontWeight = FontWeight.SemiBold)
                     OutlinedTextField(
                         value = draftReview,
                         onValueChange = { draftReview = it },
@@ -328,6 +283,33 @@ fun RestaurantDetailScreen(
                         draftRating = "5"
                     }) {
                         Text("Submit Review")
+                    }
+
+                    Text(text = "Review Sorting Options", fontWeight = FontWeight.SemiBold)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(listOf("Highest", "Lowest")) { option ->
+                            AssistChip(
+                                onClick = { sortOption = option },
+                                label = { Text(option) },
+                                leadingIcon = { Text(if (sortOption == option) "*" else "") }
+                            )
+                        }
+                    }
+
+                    Text(text = "Review Category Filters", fontWeight = FontWeight.SemiBold)
+                    val categories = listOf("All") + ReviewCategory.entries.map { it.name.lowercase().replaceFirstChar { c -> c.titlecase() } }
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(categories) { category ->
+                            AssistChip(
+                                onClick = { selectedCategory = category },
+                                label = { Text(category) },
+                                leadingIcon = { Text(if (selectedCategory == category) "*" else "") }
+                            )
+                        }
+                    }
+
+                    filteredReviews.forEach { review ->
+                        ReviewCard(review = review, variant = ReviewCardVariant.DETAILED)
                     }
                 }
             }
