@@ -51,6 +51,7 @@ fun AccountSettingsScreen(
     pushNotificationsEnabled: Boolean,
     language: LanguageOption,
     profileName: String,
+    profileDob: String,
     profileAddress: String,
     profilePhone: String,
     email: String,
@@ -61,6 +62,7 @@ fun AccountSettingsScreen(
     onPushNotificationsToggle: (Boolean) -> Unit,
     onLanguageChange: (LanguageOption) -> Unit,
     onNameChange: (String) -> Unit,
+    onDobChange: (String) -> Unit,
     onAddressChange: (String) -> Unit,
     onPhoneChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
@@ -95,6 +97,17 @@ fun AccountSettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     label = { Text("Full Name") },
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                OutlinedTextField(
+                    value = profileDob,
+                    onValueChange = onDobChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Date of Birth") },
+                    placeholder = { Text("MM/DD/YYYY") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     shape = RoundedCornerShape(12.dp)
                 )
 

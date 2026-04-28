@@ -289,6 +289,13 @@ class AppViewModel(
         refreshLlmRecommendations()
     }
 
+    fun setProfileDob(dateOfBirth: String) {
+        _uiState.value = _uiState.value.copy(
+            userProfile = _uiState.value.userProfile.copy(dateOfBirth = dateOfBirth),
+            profileSavedMessage = null
+        )
+    }
+
     fun setProfileAddress(address: String) {
         _uiState.value = _uiState.value.copy(
             userProfile = _uiState.value.userProfile.copy(address = address),

@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -47,12 +48,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.vibevision.BuildConfig
+import com.example.vibevision.di.AppContainer
 import com.example.vibevision.ml.ReviewSentimentPredictor
+import com.example.vibevision.model.UserProfile
 import com.example.vibevision.ui.components.BrandLogoMark
 import com.example.vibevision.ui.theme.InkBlue
 import com.example.vibevision.ui.theme.Rose
@@ -73,6 +77,7 @@ private const val TUTORIAL_KEY_PREFIX = "completed_"
 private enum class EntryStage {
     WELCOME,
     AUTH,
+    PROFILE_SETUP,
     TUTORIAL,
     APP
 }
@@ -102,6 +107,7 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
     var openVibeSetupOnLaunch by rememberSaveable { mutableStateOf(false) }
     var authLoading by rememberSaveable { mutableStateOf(false) }
     var authError by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingNewAccountEmail by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(stage) {
         if (stage == EntryStage.WELCOME) {
@@ -229,12 +235,17 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
                         action = action,
                         onSuccess = {
                             val completedTutorial = hasCompletedTutorial(onboardingPrefs, authRef.currentUser)
-                            if (completedTutorial) {
-                                openVibeSetupOnLaunch = false
-                                stage = EntryStage.APP
+                            if (mode == AuthMode.CREATE) {
+                                pendingNewAccountEmail = authRef.currentUser?.email.orEmpty().ifBlank { email }
+                                stage = EntryStage.PROFILE_SETUP
                             } else {
-                                openVibeSetupOnLaunch = mode == AuthMode.CREATE
-                                stage = EntryStage.TUTORIAL
+                                if (completedTutorial) {
+                                    openVibeSetupOnLaunch = false
+                                    stage = EntryStage.APP
+                                } else {
+                                    openVibeSetupOnLaunch = false
+                                    stage = EntryStage.TUTORIAL
+                                }
                             }
                         },
                         onError = { authError = it },
@@ -242,6 +253,25 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
                         alwaysUseSignInError = mode == AuthMode.LOGIN
                     )
                 }
+            }
+        )
+    }
+
+    AnimatedVisibility(
+        visible = stage == EntryStage.PROFILE_SETUP,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        FirstTimeProfileSetupScreen(
+            initialEmail = pendingNewAccountEmail,
+            onSaveProfile = { profile ->
+                val userId = auth?.currentUser?.uid
+                runCatching {
+                    AppContainer.userProfileStorage.saveProfile(userId, profile)
+                }
+                val completedTutorial = hasCompletedTutorial(onboardingPrefs, auth?.currentUser)
+                openVibeSetupOnLaunch = false
+                stage = if (completedTutorial) EntryStage.APP else EntryStage.TUTORIAL
             }
         )
     }
@@ -275,6 +305,148 @@ fun VibeVisionEntryFlow(analyzer: ReviewSentimentPredictor) {
             startInVibeSetup = openVibeSetupOnLaunch,
             onStartDestinationConsumed = { openVibeSetupOnLaunch = false }
         )
+    }
+}
+
+@Composable
+private fun FirstTimeProfileSetupScreen(
+    initialEmail: String,
+    onSaveProfile: (UserProfile) -> Unit
+) {
+    VibeVisionTheme(darkTheme = false) {
+        var fullName by rememberSaveable { mutableStateOf("") }
+        var dateOfBirth by rememberSaveable { mutableStateOf("") }
+        var address by rememberSaveable { mutableStateOf("") }
+        var phone by rememberSaveable { mutableStateOf("") }
+        var email by rememberSaveable(initialEmail) { mutableStateOf(initialEmail) }
+        val canContinue = fullName.trim().isNotEmpty() && dateOfBirth.trim().isNotEmpty() && address.trim().isNotEmpty()
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFFFFF7EA),
+                            Color(0xFFF8E8D3),
+                            Color(0xFFE7F2EE)
+                        )
+                    )
+                )
+                .padding(20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Set Up Your Profile",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = InkBlue,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Tell us a little about you so your account settings are ready to go.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = InkBlue.copy(alpha = 0.82f)
+                    )
+
+                    OutlinedTextField(
+                        value = fullName,
+                        onValueChange = { fullName = it },
+                        label = { Text("Full Name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SageGreen,
+                            focusedLabelColor = SageGreen
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = dateOfBirth,
+                        onValueChange = { dateOfBirth = it },
+                        label = { Text("Date of Birth") },
+                        placeholder = { Text("MM/DD/YYYY") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SageGreen,
+                            focusedLabelColor = SageGreen
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = address,
+                        onValueChange = { address = it },
+                        label = { Text("Address") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SageGreen,
+                            focusedLabelColor = SageGreen
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = phone,
+                        onValueChange = { phone = it },
+                        label = { Text("Phone Number") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SageGreen,
+                            focusedLabelColor = SageGreen
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SageGreen,
+                            focusedLabelColor = SageGreen
+                        )
+                    )
+
+                    Button(
+                        onClick = {
+                            onSaveProfile(
+                                UserProfile(
+                                    name = fullName.trim(),
+                                    dateOfBirth = dateOfBirth.trim(),
+                                    address = address.trim(),
+                                    phone = phone.trim(),
+                                    email = email.trim()
+                                )
+                            )
+                        },
+                        enabled = canContinue,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = InkBlue)
+                    ) {
+                        Text("Save and Continue")
+                    }
+                }
+            }
+        }
     }
 }
 

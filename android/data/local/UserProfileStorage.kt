@@ -19,6 +19,7 @@ class SharedPreferencesUserProfileStorage(context: Context) : UserProfileStorage
     override fun loadProfile(userId: String?): UserProfile {
         return UserProfile(
             name = preferences.getString(scopedKey(userId, "name"), "").orEmpty(),
+            dateOfBirth = preferences.getString(scopedKey(userId, "dob"), "").orEmpty(),
             address = preferences.getString(scopedKey(userId, "address"), "").orEmpty(),
             phone = preferences.getString(scopedKey(userId, "phone"), "").orEmpty(),
             email = preferences.getString(scopedKey(userId, "email"), "").orEmpty()
@@ -28,6 +29,7 @@ class SharedPreferencesUserProfileStorage(context: Context) : UserProfileStorage
     override fun saveProfile(userId: String?, profile: UserProfile) {
         preferences.edit()
             .putString(scopedKey(userId, "name"), profile.name)
+            .putString(scopedKey(userId, "dob"), profile.dateOfBirth)
             .putString(scopedKey(userId, "address"), profile.address)
             .putString(scopedKey(userId, "phone"), profile.phone)
             .putString(scopedKey(userId, "email"), profile.email)
