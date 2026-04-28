@@ -34,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -114,7 +116,7 @@ fun RestaurantCard(
                     if (onFavoriteToggle != null) {
                         IconButton(
                             onClick = { onFavoriteToggle(restaurant.id) },
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
                                 imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
@@ -170,6 +172,9 @@ fun RestaurantCard(
                 // Row 3 – Star rating (DEFAULT / FEATURED only)
                 if (variant != RestaurantCardVariant.COMPACT && avgRating != null) {
                     Row(
+                        modifier = Modifier.clearAndSetSemantics {
+                            contentDescription = "Rating: ${String.format(Locale.US, "%.1f", avgRating)} out of 5, ${restaurant.reviews.size} reviews"
+                        },
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {

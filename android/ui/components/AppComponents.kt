@@ -36,6 +36,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -278,7 +280,12 @@ fun ReviewCard(review: Review, variant: ReviewCardVariant = ReviewCardVariant.DE
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Star dots
-                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(
+                    modifier = Modifier.clearAndSetSemantics {
+                        contentDescription = "Rated ${review.rating} out of 5 stars"
+                    },
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
                     repeat(5) { index ->
                         Icon(
                             imageVector = Icons.Filled.Star,

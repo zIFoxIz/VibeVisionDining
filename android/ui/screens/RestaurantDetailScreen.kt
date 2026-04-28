@@ -467,11 +467,11 @@ fun RestaurantDetailScreen(
                             val selected = (draftRating.toIntOrNull() ?: 5) >= star
                             IconButton(
                                 onClick = { draftRating = star.toString() },
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(40.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Star,
-                                    contentDescription = "$star stars",
+                                    contentDescription = "$star ${if (star == 1) "star" else "stars"}",
                                     tint = if (selected) WarmOrange else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
                                     modifier = Modifier.size(22.dp)
                                 )
