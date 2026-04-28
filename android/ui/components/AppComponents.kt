@@ -1,6 +1,5 @@
 package com.example.vibevision.ui.components
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,16 +36,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.vibevision.R
+import androidx.compose.ui.unit.sp
 import com.example.vibevision.model.Review
 import com.example.vibevision.model.VibePreference
 import com.example.vibevision.ui.theme.InkBlue
 import com.example.vibevision.ui.theme.OverlayScrim
 import com.example.vibevision.ui.theme.Rose
+import com.example.vibevision.ui.theme.Sand
 import com.example.vibevision.ui.theme.SageGreen
 import com.example.vibevision.ui.theme.WarmOrange
 import com.example.vibevision.ui.theme.WarningOrange
@@ -165,15 +165,18 @@ fun BrandLogoMark(modifier: Modifier = Modifier) {
     ) {
         Box(
             modifier = Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(InkBlue),
+                .size(44.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .background(Sand),
             contentAlignment = Alignment.Center
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_vvd_foreground),
-                contentDescription = "VVD Logo",
-                modifier = Modifier.size(38.dp)
+            Text(
+                text = "VVD",
+                modifier = Modifier.offset(x = (-1).dp),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+                letterSpacing = 0.9.sp
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {

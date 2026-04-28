@@ -8,22 +8,23 @@
     <group
         android:pivotX="54"
         android:pivotY="54"
-        android:scaleX="0.65"
-        android:scaleY="0.65">
+        android:translateX="-2"
+        android:scaleX="0.62"
+        android:scaleY="0.62">
         <path
-            android:fillColor="#FFF8EA"
-            android:pathData="M8,18 L20,90 L28,90 L40,18 L32,18 L24,64 L16,18 Z" />
+            android:fillColor="#111111"
+            android:pathData="M8,18 L20,90 L30,90 L42,18 L33,18 L25,66 L17,18 Z" />
 
         <path
-            android:fillColor="#FFF8EA"
-            android:pathData="M46,18 L58,90 L66,90 L78,18 L70,18 L62,64 L54,18 Z" />
+            android:fillColor="#111111"
+            android:pathData="M44,18 L56,90 L66,90 L78,18 L69,18 L61,66 L53,18 Z" />
 
         <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M84,18 L96,18 C108,18 108,30 108,54 C108,78 108,90 96,90 L84,90 Z" />
+            android:fillColor="#111111"
+            android:pathData="M82,18 L95,18 C108,18 108,30 108,54 C108,78 108,90 95,90 L82,90 Z" />
 
         <path
-            android:fillColor="#000000"
-            android:pathData="M91,30 L95,30 C101,30 104,38 104,54 C104,70 101,78 95,78 L91,78 Z" />
+            android:fillColor="#F4E6D2"
+            android:pathData="M90,30 L94,30 C100,30 102,38 102,54 C102,70 100,78 94,78 L90,78 Z" />
     </group>
 </vector>

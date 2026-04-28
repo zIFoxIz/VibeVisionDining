@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -54,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.vibevision.BuildConfig
 import com.example.vibevision.ml.ReviewSentimentPredictor
+import com.example.vibevision.ui.components.BrandLogoMark
 import com.example.vibevision.ui.theme.InkBlue
 import com.example.vibevision.ui.theme.Rose
 import com.example.vibevision.ui.theme.SageGreen
@@ -410,52 +410,86 @@ private fun WelcomeScreen(onContinue: () -> Unit) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Restaurant,
-                                contentDescription = "Restaurant",
-                                tint = WarmOrange,
-                                modifier = Modifier.size(32.dp)
-                            )
-                            Text(
-                                text = "VibeVision Dining",
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = InkBlue
-                            )
-                        }
+                        BrandLogoMark()
 
                         Text(
-                            text = "Find your food mood.",
-                            fontSize = 28.sp,
+                            text = "Find your food mood",
+                            fontSize = 30.sp,
                             fontWeight = FontWeight.Bold,
                             color = InkBlue
                         )
 
                         Text(
-                            text = "Discover restaurants, map your vibe, and track sentiment in one bold experience.",
+                            text = "Get AI restaurant recommendations that match your vibe and what you are craving.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = InkBlue.copy(alpha = 0.86f)
                         )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF7F3))
+                            ) {
+                                Text(
+                                    text = "AI picks",
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = SageGreen
+                                )
+                            }
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+                            ) {
+                                Text(
+                                    text = "Vibe match",
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = WarmOrange
+                                )
+                            }
+                        }
+
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = InkBlue.copy(alpha = 0.06f))
+                        ) {
+                            Text(
+                                text = "AI recommendations tailored to your vibe, taste, and dining style.",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = InkBlue
+                            )
+                        }
                     }
                 }
 
-                Button(
-                    onClick = onContinue,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = InkBlue,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(18.dp)
-                ) {
-                    Text(text = "Continue", fontWeight = FontWeight.SemiBold)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Your next meal, matched to your mood.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = InkBlue.copy(alpha = 0.75f)
+                    )
+                    Button(
+                        onClick = onContinue,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = InkBlue,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Text(text = "Continue", fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }
