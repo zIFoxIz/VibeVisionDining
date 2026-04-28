@@ -79,7 +79,29 @@ fun HomeFeedScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                BrandLogoMark()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    InkBlue,
+                                    SageGreen.copy(alpha = 0.85f)
+                                )
+                            )
+                        )
+                        .padding(horizontal = 20.dp, vertical = 22.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        BrandLogoMark(onDark = true)
+                        Text(
+                            text = "Your next meal, matched to your mood.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                }
             }
 
         if (isOfflineMode) {

@@ -159,7 +159,7 @@ fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
 }
 
 @Composable
-fun BrandLogoMark(modifier: Modifier = Modifier) {
+fun BrandLogoMark(modifier: Modifier = Modifier, onDark: Boolean = false) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -185,12 +185,12 @@ fun BrandLogoMark(modifier: Modifier = Modifier) {
             Text(
                 text = "VibeVision",
                 style = MaterialTheme.typography.titleLarge,
-                color = InkBlue
+                color = if (onDark) Color.White else InkBlue
             )
             Text(
                 text = "Dining",
                 style = MaterialTheme.typography.labelLarge,
-                color = SageGreen
+                color = if (onDark) Color.White.copy(alpha = 0.75f) else SageGreen
             )
         }
     }
