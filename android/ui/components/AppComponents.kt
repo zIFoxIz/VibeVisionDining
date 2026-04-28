@@ -7,20 +7,26 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Switch
@@ -29,18 +35,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
-import com.example.vibevision.R
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.vibevision.R
 import com.example.vibevision.model.Review
 import com.example.vibevision.model.VibePreference
+import com.example.vibevision.ui.theme.InkBlue
 import com.example.vibevision.ui.theme.OverlayScrim
 import com.example.vibevision.ui.theme.Rose
 import com.example.vibevision.ui.theme.SageGreen
+import com.example.vibevision.ui.theme.WarmOrange
 import com.example.vibevision.ui.theme.WarningOrange
 
 data class NavDestinationItem(
@@ -55,10 +62,31 @@ enum class ReviewCardVariant {
 
 @Composable
 fun SectionHeader(title: String, subtitle: String? = null) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(text = title, fontWeight = FontWeight.Bold)
-        if (subtitle != null) {
-            Text(text = subtitle)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(if (subtitle != null) 38.dp else 22.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(SageGreen)
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f)
+                )
+            }
         }
     }
 }
@@ -67,11 +95,21 @@ fun SectionHeader(title: String, subtitle: String? = null) {
 fun MetricCard(title: String, value: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        shape = RoundedCornerShape(14.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = SageGreen.copy(alpha = 0.08f))
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = title, fontWeight = FontWeight.SemiBold)
-            Text(text = value)
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                color = SageGreen
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
@@ -80,19 +118,40 @@ fun MetricCard(title: String, value: String) {
 fun EmptyStateCard(title: String, message: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(text = title, fontWeight = FontWeight.SemiBold)
-            Text(text = message)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(text = "🍽️", style = MaterialTheme.typography.displaySmall)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
 
 @Composable
 fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(text = label)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, style = MaterialTheme.typography.bodyMedium)
         Switch(checked = checked, onCheckedChange = onChange)
     }
 }
@@ -101,25 +160,33 @@ fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
 fun BrandLogoMark(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.Black),
+                .size(46.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(InkBlue),
             contentAlignment = Alignment.Center
         ) {
             Image(
                 painter = painterResource(id = R.drawable.ic_vvd_foreground),
                 contentDescription = "VVD Logo",
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(38.dp)
             )
         }
-        Column {
-            Text(text = "VibeVision", fontWeight = FontWeight.Bold)
-            Text(text = "Dining", color = Color.Black)
+        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            Text(
+                text = "VibeVision",
+                style = MaterialTheme.typography.titleLarge,
+                color = InkBlue
+            )
+            Text(
+                text = "Dining",
+                style = MaterialTheme.typography.labelLarge,
+                color = SageGreen
+            )
         }
     }
 }
@@ -150,6 +217,7 @@ fun AppBottomNavigationBar(
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun FilterChipRow(
     title: String,
@@ -157,14 +225,23 @@ fun FilterChipRow(
     selected: Set<String>,
     onToggle: (String) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(text = title, fontWeight = FontWeight.SemiBold)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+        )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(options) { option ->
-                AssistChip(
+                val isSelected = selected.contains(option)
+                FilterChip(
+                    selected = isSelected,
                     onClick = { onToggle(option) },
-                    label = { Text(option) },
-                    leadingIcon = { Text(if (selected.contains(option)) "*" else "") }
+                    label = { Text(option, style = MaterialTheme.typography.labelMedium) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = SageGreen,
+                        selectedLabelColor = Color.White
+                    )
                 )
             }
         }
@@ -177,7 +254,7 @@ fun VibePreferenceChips(
     onToggle: (String) -> Unit
 ) {
     FilterChipRow(
-        title = "Vibe Preference Chips",
+        title = "Your Vibe Preferences",
         options = preferences.map { it.vibe },
         selected = preferences.filter { it.enabled }.map { it.vibe }.toSet(),
         onToggle = onToggle
@@ -186,14 +263,43 @@ fun VibePreferenceChips(
 
 @Composable
 fun ReviewCard(review: Review, variant: ReviewCardVariant = ReviewCardVariant.DETAILED) {
-    Card(elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
-        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(text = "${review.rating}/5 • ${review.category.name}", fontWeight = FontWeight.SemiBold)
-            if (variant == ReviewCardVariant.DETAILED) {
-                Text(text = review.text)
-            } else {
-                Text(text = review.text.take(72) + if (review.text.length > 72) "..." else "")
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Star dots
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    repeat(5) { index ->
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = if (index < review.rating) WarmOrange
+                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                        )
+                    }
+                }
+                Text(
+                    text = review.category.name.lowercase()
+                        .replaceFirstChar { it.titlecase() },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SageGreen
+                )
             }
+            val displayText = if (variant == ReviewCardVariant.DETAILED) review.text
+                              else review.text.take(80) + if (review.text.length > 80) "…" else ""
+            Text(
+                text = displayText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+            )
         }
     }
 }

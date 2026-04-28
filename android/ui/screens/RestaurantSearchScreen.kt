@@ -9,22 +9,36 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,7 +46,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,6 +63,9 @@ import com.example.vibevision.ui.components.OverlayPanel
 import com.example.vibevision.ui.components.RestaurantCard
 import com.example.vibevision.ui.components.RestaurantCardVariant
 import com.example.vibevision.ui.components.SectionHeader
+import com.example.vibevision.ui.theme.Rose
+import com.example.vibevision.ui.theme.SageGreen
+import com.example.vibevision.ui.theme.WarmOrange
 import kotlinx.coroutines.launch
 
 
@@ -112,80 +131,146 @@ fun RestaurantSearchScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-        SectionHeader(title = "Restaurant Search", subtitle = "Search and filter restaurants")
+        SectionHeader(title = "Discover", subtitle = "Search restaurants by name, city, or vibe")
 
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search by city, name, or address") }
+            placeholder = { Text("City, name, or address…") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = null,
+                    tint = SageGreen
+                )
+            },
+            shape = RoundedCornerShape(14.dp),
+            singleLine = true
         )
 
-        Button(onClick = onSearchNow, enabled = !isLoading, modifier = Modifier.fillMaxWidth()) {
-            Text("Search Restaurants")
-        }
-
-        Button(
-            onClick = {
-                val permissionState = ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                )
-                if (permissionState == PackageManager.PERMISSION_GRANTED) {
-                    fetchCurrentLocation(
-                        context = context,
-                        onFound = { lat, lng ->
-                            locationError = null
-                            onSearchNearMe(lat, lng)
-                        },
-                        onError = { message ->
-                            locationError = message
-                        }
+        // Primary action row
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = onSearchNow,
+                enabled = !isLoading,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(16.dp))
+                Text(" Search", style = MaterialTheme.typography.labelLarge)
+            }
+            Button(
+                onClick = {
+                    val permissionState = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
                     )
-                } else {
-                    locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                }
-            },
-            enabled = !isLoading,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Restaurants Near You")
+                    if (permissionState == PackageManager.PERMISSION_GRANTED) {
+                        fetchCurrentLocation(
+                            context = context,
+                            onFound = { lat, lng ->
+                                locationError = null
+                                onSearchNearMe(lat, lng)
+                            },
+                            onError = { message ->
+                                locationError = message
+                            }
+                        )
+                    } else {
+                        locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    }
+                },
+                enabled = !isLoading,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = SageGreen)
+            ) {
+                Icon(Icons.Filled.MyLocation, contentDescription = null, modifier = Modifier.size(16.dp))
+                Text(" Near Me", style = MaterialTheme.typography.labelLarge)
+            }
         }
 
-        Button(onClick = onToggleOverlay, enabled = !isLoading, modifier = Modifier.fillMaxWidth()) {
-            Text(if (showFilterOverlay) "Hide Filters" else "Filter Results")
-        }
-
-        Button(onClick = onShowAllRestaurants, enabled = !isLoading, modifier = Modifier.fillMaxWidth()) {
-            Text("Show All Restaurants")
+        // Secondary action row
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = onToggleOverlay,
+                enabled = !isLoading,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Filled.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
+                Text(
+                    text = if (showFilterOverlay) " Hide Filters" else " Filters",
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+            OutlinedButton(
+                onClick = onShowAllRestaurants,
+                enabled = !isLoading,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Show All", style = MaterialTheme.typography.labelLarge)
+            }
         }
 
         Text(
-            text = "${restaurants.size} result(s)",
-            fontWeight = FontWeight.SemiBold
+            text = if (restaurants.isEmpty()) "No results yet"
+                   else "${restaurants.size} restaurant${if (restaurants.size == 1) "" else "s"} found",
+            style = MaterialTheme.typography.labelLarge,
+            color = SageGreen
         )
 
         if (isLoading) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            Text(text = "Searching live restaurants...")
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth(),
+                color = SageGreen
+            )
+            Text(
+                text = "Searching…",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            )
         }
 
         if (errorMessage != null) {
-            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
-                Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = errorMessage)
-                    Button(onClick = onClearError) {
-                        Text("Dismiss")
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Rose.copy(alpha = 0.1f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = errorMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Rose,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = onClearError) {
+                        Text("Dismiss", color = Rose)
                     }
                 }
             }
         }
 
         if (locationError != null) {
-            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = WarmOrange.copy(alpha = 0.1f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
                 Text(
                     text = locationError ?: "",
-                    modifier = Modifier.padding(10.dp)
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = WarmOrange
                 )
             }
         }
@@ -262,9 +347,15 @@ fun RestaurantSearchScreen(
                 modifier = Modifier
                     .align(androidx.compose.ui.Alignment.BottomEnd)
                     .padding(16.dp)
-                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .windowInsetsPadding(WindowInsets.navigationBars),
+                containerColor = SageGreen,
+                elevation = FloatingActionButtonDefaults.elevation(4.dp)
             ) {
-                Text("Top")
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowUp,
+                    contentDescription = "Scroll to top",
+                    tint = Color.White
+                )
             }
         }
     }
