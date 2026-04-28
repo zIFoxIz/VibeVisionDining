@@ -29,6 +29,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +67,7 @@ fun HomeFeedScreen(
     val topPicks = restaurants.take(3)
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val showScrollToTop by remember { derivedStateOf { listState.firstVisibleItemIndex > 2 } }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -237,14 +241,14 @@ fun HomeFeedScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        if (listState.firstVisibleItemIndex > 2) {
+        if (showScrollToTop) {
             item {
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(56.dp))
             }
         }
     }
 
-        if (listState.firstVisibleItemIndex > 2) {
+        if (showScrollToTop) {
             FloatingActionButton(
                 onClick = { scope.launch { listState.animateScrollToItem(0) } },
                 modifier = Modifier

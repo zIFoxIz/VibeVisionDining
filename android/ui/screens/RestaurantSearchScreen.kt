@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -101,6 +102,7 @@ fun RestaurantSearchScreen(
 ) {
     val resultsState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val showScrollToTop by remember { derivedStateOf { resultsState.firstVisibleItemIndex > 3 } }
     val context = LocalContext.current
     var locationError by remember { mutableStateOf<String?>(null) }
     val hasActiveSearch = query.isNotBlank() || selectedCity != "All"
@@ -341,7 +343,7 @@ fun RestaurantSearchScreen(
             }
         }
 
-        if (resultsState.firstVisibleItemIndex > 3) {
+        if (showScrollToTop) {
             FloatingActionButton(
                 onClick = { scope.launch { resultsState.animateScrollToItem(0) } },
                 modifier = Modifier
