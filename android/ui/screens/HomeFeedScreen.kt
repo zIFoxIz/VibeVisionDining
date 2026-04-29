@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.vibevision.model.Restaurant
 import com.example.vibevision.ui.components.BrandLogoMark
+import com.example.vibevision.ui.components.EmptyStateCard
 import com.example.vibevision.ui.components.MetricCard
 import com.example.vibevision.ui.components.RestaurantCard
 import com.example.vibevision.ui.components.RestaurantCardVariant
@@ -79,6 +80,11 @@ fun HomeFeedScreen(
     val allOtherRestaurants = remember(restaurants, highlightedIds) {
         restaurants.filterNot { highlightedIds.contains(it.id) }
     }
+    val hasFeedCards = recommendations.isNotEmpty() ||
+        favorites.isNotEmpty() ||
+        recentlyViewed.isNotEmpty() ||
+        topPicks.isNotEmpty() ||
+        allOtherRestaurants.isNotEmpty()
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -189,6 +195,19 @@ fun HomeFeedScreen(
             )
         }
 
+        if (!hasFeedCards) {
+            item {
+                EmptyStateCard(
+                    title = "No restaurants to show yet",
+                    message = if (isOfflineMode) {
+                        "You are offline right now. Reconnect and search again to load fresh places."
+                    } else {
+                        "Try searching by city or cuisine from the Search tab to discover places nearby."
+                    }
+                )
+            }
+        }
+
         if (recommendations.isNotEmpty()) {
             item {
                 SectionHeader(title = "For You", subtitle = "Matched to your vibe preferences")
@@ -261,22 +280,24 @@ fun HomeFeedScreen(
             }
         }
 
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = "—  You’ve seen it all  —",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
-                    textAlign = TextAlign.Center
-                )
+        if (hasFeedCards) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "—  You’ve seen it all  —",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
             }
-            Spacer(modifier = Modifier.height(8.dp))
         }
 
         if (showScrollToTop) {
