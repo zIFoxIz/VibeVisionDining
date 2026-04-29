@@ -68,6 +68,17 @@ fun HomeFeedScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val showScrollToTop by remember { derivedStateOf { listState.firstVisibleItemIndex > 2 } }
+    val highlightedIds = remember(recommendations, favorites, recentlyViewed, topPicks) {
+        buildSet {
+            recommendations.forEach { add(it.id) }
+            favorites.forEach { add(it.id) }
+            recentlyViewed.forEach { add(it.id) }
+            topPicks.forEach { add(it.id) }
+        }
+    }
+    val allOtherRestaurants = remember(restaurants, highlightedIds) {
+        restaurants.filterNot { highlightedIds.contains(it.id) }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -236,13 +247,18 @@ fun HomeFeedScreen(
             }
         }
 
-        items(restaurants) { restaurant ->
-            RestaurantCard(
-                restaurant = restaurant,
-                onClick = onRestaurantClick,
-                isFavorite = favoriteIds.contains(restaurant.id),
-                onFavoriteToggle = onFavoriteToggle
-            )
+        if (allOtherRestaurants.isNotEmpty()) {
+            item {
+                SectionHeader(title = "All Restaurants", subtitle = "More places to explore")
+            }
+            items(allOtherRestaurants) { restaurant ->
+                RestaurantCard(
+                    restaurant = restaurant,
+                    onClick = onRestaurantClick,
+                    isFavorite = favoriteIds.contains(restaurant.id),
+                    onFavoriteToggle = onFavoriteToggle
+                )
+            }
         }
 
         item {
