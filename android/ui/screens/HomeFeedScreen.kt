@@ -161,24 +161,21 @@ fun HomeFeedScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(InkBlue, SageGreen)
-                        )
-                    )
-                    .padding(18.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(16.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "🧠 AI Sentiment Summary",
+                        text = "AI Summary",
                         style = MaterialTheme.typography.labelLarge,
-                        color = Color.White.copy(alpha = 0.75f)
+                        color = SageGreen,
+                        fontWeight = FontWeight.SemiBold
                     )
                     Text(
                         text = aiSummary,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
