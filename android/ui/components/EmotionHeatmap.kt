@@ -19,38 +19,38 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun EmotionHeatmap(scores: Map<String, Float>) {
-    val ordered = listOf("joy", "calm", "neutral", "frustration", "anger", "trust")
-    val values = ordered.associateWith { scores[it] ?: 0f }
+    val emotionTiles = listOf(
+        EmotionTile("joy", "JOY", Color(0xFF4CAF50)),
+        EmotionTile("calm", "CALM", Color(0xFF03A9F4)),
+        EmotionTile("anger", "ANGER", Color(0xFFF44336))
+    )
 
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(text = "Heatmap Grid", fontWeight = FontWeight.SemiBold)
 
-        ordered.chunked(3).forEach { rowItems ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                rowItems.forEach { key ->
-                    val value = values[key] ?: 0f
-                    val alpha = 0.2f + value.coerceIn(0f, 1f) * 0.8f
-                    val color = when (key) {
-                        "joy" -> Color(0xFF4CAF50)
-                        "calm" -> Color(0xFF03A9F4)
-                        "neutral" -> Color(0xFF9E9E9E)
-                        "frustration" -> Color(0xFFFF9800)
-                        "trust" -> Color(0xFF8BC34A)
-                        else -> Color(0xFFF44336)
-                    }.copy(alpha = alpha)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            emotionTiles.forEach { tile ->
+                val value = scores[tile.key] ?: 0f
+                val alpha = 0.2f + value.coerceIn(0f, 1f) * 0.8f
+                val color = tile.baseColor.copy(alpha = alpha)
 
-                    Box(
-                        modifier = Modifier
-                            .width(90.dp)
-                            .height(60.dp)
-                            .background(color)
-                            .padding(6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "${key.uppercase()}\n${String.format("%.0f", value * 100)}%")
-                    }
+                Box(
+                    modifier = Modifier
+                        .width(90.dp)
+                        .height(60.dp)
+                        .background(color)
+                        .padding(6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "${tile.label}\n${String.format("%.0f", value * 100)}%")
                 }
             }
         }
     }
 }
+
+private data class EmotionTile(
+    val key: String,
+    val label: String,
+    val baseColor: Color
+)
