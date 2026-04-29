@@ -65,25 +65,39 @@ fun HomeFeedScreen(
     onRestaurantClick: (Restaurant) -> Unit,
     onFavoriteToggle: (String) -> Unit
 ) {
-    val topPicks = restaurants.take(3)
+    val topPicks = remember(restaurants) { restaurants.take(3) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val showScrollToTop by remember { derivedStateOf { listState.firstVisibleItemIndex > 2 } }
-    val highlightedIds = remember(recommendations, favorites, recentlyViewed, topPicks) {
+    val uniqueSections = remember(recommendations, favorites, recentlyViewed, topPicks) {
+        val seenIds = mutableSetOf<String>()
+        val uniqueRecommendations = recommendations.filter { seenIds.add(it.id) }
+        val uniqueFavorites = favorites.filter { seenIds.add(it.id) }
+        val uniqueRecentlyViewed = recentlyViewed.filter { seenIds.add(it.id) }
+        val uniqueTopPicks = topPicks.filter { seenIds.add(it.id) }
+
+        HomeSections(
+            recommendations = uniqueRecommendations,
+            favorites = uniqueFavorites,
+            recentlyViewed = uniqueRecentlyViewed,
+            topPicks = uniqueTopPicks
+        )
+    }
+    val highlightedIds = remember(uniqueSections) {
         buildSet {
-            recommendations.forEach { add(it.id) }
-            favorites.forEach { add(it.id) }
-            recentlyViewed.forEach { add(it.id) }
-            topPicks.forEach { add(it.id) }
+            uniqueSections.recommendations.forEach { add(it.id) }
+            uniqueSections.favorites.forEach { add(it.id) }
+            uniqueSections.recentlyViewed.forEach { add(it.id) }
+            uniqueSections.topPicks.forEach { add(it.id) }
         }
     }
     val allOtherRestaurants = remember(restaurants, highlightedIds) {
         restaurants.filterNot { highlightedIds.contains(it.id) }
     }
-    val hasFeedCards = recommendations.isNotEmpty() ||
-        favorites.isNotEmpty() ||
-        recentlyViewed.isNotEmpty() ||
-        topPicks.isNotEmpty() ||
+    val hasFeedCards = uniqueSections.recommendations.isNotEmpty() ||
+        uniqueSections.favorites.isNotEmpty() ||
+        uniqueSections.recentlyViewed.isNotEmpty() ||
+        uniqueSections.topPicks.isNotEmpty() ||
         allOtherRestaurants.isNotEmpty()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -205,11 +219,11 @@ fun HomeFeedScreen(
             }
         }
 
-        if (recommendations.isNotEmpty()) {
+        if (uniqueSections.recommendations.isNotEmpty()) {
             item {
                 SectionHeader(title = "For You", subtitle = "Matched to your vibe preferences")
             }
-            items(recommendations) { restaurant ->
+            items(uniqueSections.recommendations) { restaurant ->
                 RestaurantCard(
                     restaurant = restaurant,
                     onClick = onRestaurantClick,
@@ -220,11 +234,11 @@ fun HomeFeedScreen(
             }
         }
 
-        if (favorites.isNotEmpty()) {
+        if (uniqueSections.favorites.isNotEmpty()) {
             item {
                 SectionHeader(title = "Favorites", subtitle = "Places you’ve saved")
             }
-            items(favorites) { restaurant ->
+            items(uniqueSections.favorites) { restaurant ->
                 RestaurantCard(
                     restaurant = restaurant,
                     onClick = onRestaurantClick,
@@ -235,11 +249,11 @@ fun HomeFeedScreen(
             }
         }
 
-        if (recentlyViewed.isNotEmpty()) {
+        if (uniqueSections.recentlyViewed.isNotEmpty()) {
             item {
                 SectionHeader(title = "Recently Viewed", subtitle = "Pick up where you left off")
             }
-            items(recentlyViewed) { restaurant ->
+            items(uniqueSections.recentlyViewed) { restaurant ->
                 RestaurantCard(
                     restaurant = restaurant,
                     onClick = onRestaurantClick,
@@ -249,11 +263,11 @@ fun HomeFeedScreen(
             }
         }
 
-        if (topPicks.isNotEmpty()) {
+        if (uniqueSections.topPicks.isNotEmpty()) {
             item {
                 SectionHeader(title = "Top Picks", subtitle = "Highest rated in your area")
             }
-            items(topPicks) { restaurant ->
+            items(uniqueSections.topPicks) { restaurant ->
                 RestaurantCard(
                     restaurant = restaurant,
                     onClick = onRestaurantClick,
@@ -323,3 +337,10 @@ fun HomeFeedScreen(
         }
     }
 }
+
+private data class HomeSections(
+    val recommendations: List<Restaurant>,
+    val favorites: List<Restaurant>,
+    val recentlyViewed: List<Restaurant>,
+    val topPicks: List<Restaurant>
+)
