@@ -253,16 +253,28 @@ private fun formatPrice(restaurant: Restaurant): String {
 }
 
 private fun formatPriceTier(restaurant: Restaurant): String {
-    return if (restaurant.hasLivePriceLevel) {
-        "$".repeat(restaurant.priceLevel)
+    if (restaurant.hasLivePriceLevel) return "$".repeat(restaurant.priceLevel)
+    val avg = restaurant.avgPricePerPersonUsd
+    return if (avg != null) {
+        val estimated = when {
+            avg < 15  -> 1
+            avg < 30  -> 2
+            avg < 60  -> 3
+            else      -> 4
+        }
+        "~" + "$".repeat(estimated)
     } else {
-        "Tier unavailable"
+        "$".repeat(2) // default mid-range guess
     }
 }
 
 private fun pricingConfidenceLabel(restaurant: Restaurant): String {
-    if (!restaurant.hasLivePriceLevel) return "Pricing confidence: No price data"
-
+    if (!restaurant.hasLivePriceLevel) {
+        return if (restaurant.avgPricePerPersonUsd != null)
+            "Pricing confidence: Estimated from avg spend"
+        else
+            "Pricing confidence: Estimated (mid-range default)"
+    }
     return when {
         restaurant.avgPricePerPersonUsd == null -> "Pricing confidence: Live tier"
         restaurant.isAvgPriceEstimated -> "Pricing confidence: Live tier and estimated avg"

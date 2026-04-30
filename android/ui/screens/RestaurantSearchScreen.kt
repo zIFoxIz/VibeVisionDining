@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -162,7 +161,7 @@ fun RestaurantSearchScreen(
                 Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(16.dp))
                 Text(" Search", style = MaterialTheme.typography.labelLarge)
             }
-            Button(
+            OutlinedButton(
                 onClick = {
                     val permissionState = ContextCompat.checkSelfPermission(
                         context,
@@ -185,8 +184,7 @@ fun RestaurantSearchScreen(
                 },
                 enabled = !isLoading,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = SageGreen)
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(Icons.Filled.MyLocation, contentDescription = null, modifier = Modifier.size(16.dp))
                 Text(" Near Me", style = MaterialTheme.typography.labelLarge)
@@ -207,11 +205,10 @@ fun RestaurantSearchScreen(
                     style = MaterialTheme.typography.labelLarge
                 )
             }
-            OutlinedButton(
+            TextButton(
                 onClick = onShowAllRestaurants,
                 enabled = !isLoading,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier.weight(1f)
             ) {
                 Text("Show All", style = MaterialTheme.typography.labelLarge)
             }
