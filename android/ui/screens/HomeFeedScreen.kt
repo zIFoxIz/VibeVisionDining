@@ -65,6 +65,12 @@ fun HomeFeedScreen(
     onRestaurantClick: (Restaurant) -> Unit,
     onFavoriteToggle: (String) -> Unit
 ) {
+    val heroCardBrush = Brush.linearGradient(
+        colors = listOf(
+            InkBlue,
+            SageGreen.copy(alpha = 0.85f)
+        )
+    )
     val topPicks = remember(restaurants) { restaurants.take(3) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -103,10 +109,15 @@ fun HomeFeedScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp,
+                bottom = 80.dp
+            ),
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
-                .padding(bottom = 80.dp),
+                .windowInsetsPadding(WindowInsets.navigationBars),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
@@ -114,14 +125,7 @@ fun HomeFeedScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(20.dp))
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    InkBlue,
-                                    SageGreen.copy(alpha = 0.85f)
-                                )
-                            )
-                        )
+                        .background(heroCardBrush)
                         .padding(horizontal = 20.dp, vertical = 22.dp)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -175,21 +179,21 @@ fun HomeFeedScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(16.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(heroCardBrush)
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         text = "AI Summary",
                         style = MaterialTheme.typography.labelLarge,
-                        color = SageGreen,
+                        color = Color.White.copy(alpha = 0.9f),
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
                         text = aiSummary,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = Color.White.copy(alpha = 0.88f)
                     )
                 }
             }

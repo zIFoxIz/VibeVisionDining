@@ -139,7 +139,7 @@ fun RestaurantSearchScreen(
             value = query,
             onValueChange = onQueryChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("City, name, or address…") },
+            placeholder = { Text("Name, city, or vibe…") },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Filled.Search,
