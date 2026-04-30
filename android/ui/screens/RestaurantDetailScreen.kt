@@ -102,6 +102,7 @@ fun RestaurantDetailScreen(
     var capturedPhoto by remember { mutableStateOf<Bitmap?>(null) }
     var cameraMessage by remember { mutableStateOf<String?>(null) }
     val filteredReviews = filterAndSortReviews(reviews, selectedCategory, sortOption)
+    val (effectiveDishes, dishesAreEstimated) = remember(restaurant) { effectiveDishSentiments(restaurant) }
 
     val takePhotoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
@@ -376,17 +377,20 @@ fun RestaurantDetailScreen(
             }
         }
 
-        if (restaurant.dishSentiments.isNotEmpty()) {
+        if (effectiveDishes.isNotEmpty()) {
             item {
-                SectionHeader(title = "Dish Sentiment", subtitle = "How diners feel about each dish")
+                SectionHeader(
+                    title = "Dish Sentiment",
+                    subtitle = if (dishesAreEstimated) "Based on menu highlights — no live data yet" else "How diners feel about each dish"
+                )
             }
 
-            items(restaurant.dishSentiments) { dish ->
+            items(effectiveDishes) { dish ->
                 DishCard(dish = dish, variant = DishCardVariant.HIGHLIGHT)
             }
         }
 
-        if (restaurant.dishSentiments.isNotEmpty()) {
+        if (effectiveDishes.isNotEmpty() && !dishesAreEstimated) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -395,8 +399,8 @@ fun RestaurantDetailScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(text = "👍 Positive Votes", style = MaterialTheme.typography.titleMedium)
-                        val maxPositive = restaurant.dishSentiments.maxOfOrNull { it.positive }?.coerceAtLeast(1) ?: 1
-                        restaurant.dishSentiments.forEach { dish ->
+                        val maxPositive = effectiveDishes.maxOfOrNull { it.positive }?.coerceAtLeast(1) ?: 1
+                        effectiveDishes.forEach { dish ->
                             val ratio = dish.positive.toFloat() / maxPositive.toFloat()
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Row(
@@ -582,5 +586,13 @@ private fun filterAndSortReviews(reviews: List<Review>, category: String, sort: 
         "Lowest" -> filtered.sortedBy { it.rating }
         else -> filtered.sortedByDescending { it.rating }
     }
+}
+
+private fun effectiveDishSentiments(restaurant: Restaurant): Pair<List<com.example.vibevision.model.DishSentiment>, Boolean> {
+    if (restaurant.dishSentiments.isNotEmpty()) return Pair(restaurant.dishSentiments, false)
+    val estimated = restaurant.menuPreview.map { name ->
+        com.example.vibevision.model.DishSentiment(dishName = name, positive = 3, neutral = 2, negative = 1)
+    }
+    return Pair(estimated, estimated.isNotEmpty())
 }
 

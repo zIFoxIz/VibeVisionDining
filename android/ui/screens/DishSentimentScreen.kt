@@ -28,11 +28,13 @@ import com.example.vibevision.ui.components.DishCardVariant
 fun DishSentimentScreen(restaurant: Restaurant) {
     var sortBy by remember { mutableStateOf("Positive") }
 
-    val dishes = remember(restaurant, sortBy) {
+    val (rawDishes, isEstimated) = remember(restaurant) { effectiveDishSentiments(restaurant) }
+
+    val dishes = remember(rawDishes, sortBy) {
         when (sortBy) {
-            "Negative" -> restaurant.dishSentiments.sortedByDescending { it.negative }
-            "Mentioned" -> restaurant.dishSentiments.sortedByDescending { it.positive + it.neutral + it.negative }
-            else -> restaurant.dishSentiments.sortedByDescending { it.positive }
+            "Negative" -> rawDishes.sortedByDescending { it.negative }
+            "Mentioned" -> rawDishes.sortedByDescending { it.positive + it.neutral + it.negative }
+            else -> rawDishes.sortedByDescending { it.positive }
         }
     }
 
@@ -63,6 +65,13 @@ fun DishSentimentScreen(restaurant: Restaurant) {
                         }
                     }
 
+                    if (isEstimated) {
+                        Text(
+                            text = "No live sentiment data — showing menu highlights with estimated scores.",
+                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                     if (winner != null) {
                         Text(text = "Top dish right now: ${winner.dishName}")
                     }
@@ -78,4 +87,12 @@ fun DishSentimentScreen(restaurant: Restaurant) {
 
 private fun topDish(dishes: List<DishSentiment>): DishSentiment? {
     return dishes.maxByOrNull { it.positive - it.negative }
+}
+
+private fun effectiveDishSentiments(restaurant: Restaurant): Pair<List<DishSentiment>, Boolean> {
+    if (restaurant.dishSentiments.isNotEmpty()) return Pair(restaurant.dishSentiments, false)
+    val estimated = restaurant.menuPreview.map { name ->
+        DishSentiment(dishName = name, positive = 3, neutral = 2, negative = 1)
+    }
+    return Pair(estimated, estimated.isNotEmpty())
 }
