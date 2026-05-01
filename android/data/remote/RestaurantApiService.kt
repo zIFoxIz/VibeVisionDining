@@ -197,7 +197,8 @@ class RealRestaurantApiService private constructor(
 
 class GooglePlacesRestaurantApiService private constructor(
     private val placesApi: GooglePlacesApi,
-    private val apiKey: String
+    private val apiKey: String,
+    private val dishLookup: Map<String, List<String>> = emptyMap()
 ) : RestaurantApiService {
     override suspend fun fetchRestaurants(): List<Restaurant> {
         return searchRestaurants(query = "", city = "All")
@@ -325,6 +326,7 @@ class GooglePlacesRestaurantApiService private constructor(
             add(if (price <= 2) "Family" else "Modern")
         }.distinct()
         val liveMenuPreview = buildLiveMenuPreview(liveReviews, cuisineGuess)
+            .ifEmpty { dishLookup[normalizeDishKey(safeName, cityName)].orEmpty() }
 
         return Restaurant(
             id = safePlaceId,
@@ -343,6 +345,11 @@ class GooglePlacesRestaurantApiService private constructor(
         )
     }
 
+    private fun normalizeDishKey(name: String, city: String): String {
+        fun clean(s: String) = s.lowercase().replace(Regex("[^a-z0-9 ]"), "").trim()
+        return "${clean(name)}|${clean(city)}"
+    }
+
     private fun buildLiveMenuPreview(reviews: List<Review>, cuisine: String): List<String> {
         if (reviews.isEmpty()) return emptyList()
 
@@ -356,13 +363,6 @@ class GooglePlacesRestaurantApiService private constructor(
         val effectiveKeywords = if (cuisineKeywords.isNotEmpty()) cuisineKeywords + genericFallbackKeywords
             else genericFallbackKeywords
 
-        val genericWords = setOf(
-            "restaurant", "place", "food", "service", "staff", "great", "good", "amazing", "nice",
-            "friendly", "menu", "atmosphere", "location", "price", "prices", "ordered", "order",
-            "delicious", "fresh", "taste", "tasty", "really", "very", "definitely", "recommend"
-        )
-
-        val tokenCounts = mutableMapOf<String, Int>()
         val keywordCounts = mutableMapOf<String, Int>()
 
         reviews.forEach { review ->
@@ -374,7 +374,6 @@ class GooglePlacesRestaurantApiService private constructor(
                 .distinct()
 
             tokens.forEach { token ->
-                tokenCounts[token] = (tokenCounts[token] ?: 0) + 1
                 if (token in effectiveKeywords) {
                     keywordCounts[token] = (keywordCounts[token] ?: 0) + 1
                 }
@@ -390,11 +389,8 @@ class GooglePlacesRestaurantApiService private constructor(
             return prioritized.map { it.replaceFirstChar { c -> c.uppercase() } }
         }
 
-        return tokenCounts.entries
-            .filter { (word, count) -> count >= 2 && word !in genericWords }
-            .sortedByDescending { it.value }
-            .take(4)
-            .map { it.key.replaceFirstChar { c -> c.uppercase() } }
+        // Only return words we recognise as actual food/dish keywords — never raw review tokens
+        return emptyList()
     }
 
     private fun cuisineSpecificKeywords(cuisine: String): Set<String> {
@@ -470,7 +466,7 @@ class GooglePlacesRestaurantApiService private constructor(
     }
 
     companion object {
-        fun create(apiKey: String): GooglePlacesRestaurantApiService {
+        fun create(apiKey: String, dishLookup: Map<String, List<String>> = emptyMap()): GooglePlacesRestaurantApiService {
             val retrofit = Retrofit.Builder()
                 .baseUrl("https://maps.googleapis.com/")
                 .client(OkHttpClient.Builder().build())
@@ -479,7 +475,8 @@ class GooglePlacesRestaurantApiService private constructor(
 
             return GooglePlacesRestaurantApiService(
                 placesApi = retrofit.create(GooglePlacesApi::class.java),
-                apiKey = apiKey
+                apiKey = apiKey,
+                dishLookup = dishLookup
             )
         }
     }
