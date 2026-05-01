@@ -198,7 +198,7 @@ class RealRestaurantApiService private constructor(
 class GooglePlacesRestaurantApiService private constructor(
     private val placesApi: GooglePlacesApi,
     private val apiKey: String,
-    private val dishLookup: Map<String, List<String>> = emptyMap()
+    private val dishLookup: Map<String, List<DishSentiment>> = emptyMap()
 ) : RestaurantApiService {
     override suspend fun fetchRestaurants(): List<Restaurant> {
         return searchRestaurants(query = "", city = "All")
@@ -325,8 +325,10 @@ class GooglePlacesRestaurantApiService private constructor(
             add(if (price >= 3) "Date Night" else "Casual")
             add(if (price <= 2) "Family" else "Modern")
         }.distinct()
+        val lookupKey = normalizeDishKey(safeName, cityName)
+        val offlineDishSentiments = dishLookup[lookupKey].orEmpty()
         val liveMenuPreview = buildLiveMenuPreview(liveReviews, cuisineGuess)
-            .ifEmpty { dishLookup[normalizeDishKey(safeName, cityName)].orEmpty() }
+            .ifEmpty { offlineDishSentiments.map { it.dishName } }
 
         return Restaurant(
             id = safePlaceId,
@@ -340,7 +342,7 @@ class GooglePlacesRestaurantApiService private constructor(
             photoLabels = emptyList(),
             menuPreview = liveMenuPreview,
             reviews = liveReviews,
-            dishSentiments = emptyList(),
+            dishSentiments = offlineDishSentiments,
             avgPricePerPersonUsd = resolvedPriceLevel?.let { estimatedAveragePriceFromTier(it) }
         )
     }
@@ -466,7 +468,7 @@ class GooglePlacesRestaurantApiService private constructor(
     }
 
     companion object {
-        fun create(apiKey: String, dishLookup: Map<String, List<String>> = emptyMap()): GooglePlacesRestaurantApiService {
+        fun create(apiKey: String, dishLookup: Map<String, List<DishSentiment>> = emptyMap()): GooglePlacesRestaurantApiService {
             val retrofit = Retrofit.Builder()
                 .baseUrl("https://maps.googleapis.com/")
                 .client(OkHttpClient.Builder().build())

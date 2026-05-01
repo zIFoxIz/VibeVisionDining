@@ -7,14 +7,15 @@ import com.example.vibevision.data.local.InMemoryLocalDatabase
 import com.example.vibevision.data.local.SharedPreferencesUserProfileStorage
 import com.example.vibevision.data.local.UserProfileStorage
 import com.example.vibevision.data.remote.GooglePlacesRestaurantApiService
+import com.example.vibevision.model.DishSentiment
 import com.example.vibevision.data.remote.LlmRecommendationService
 import com.example.vibevision.data.remote.OpenAiLlmRecommendationService
 import com.example.vibevision.data.repo.RestaurantRepository
 
 object AppContainer {
     private var appContext: Context? = null
-    // Dish lookup loaded from assets: "normalized_name|city" -> list of dish names
-    private var dishLookup: Map<String, List<String>> = emptyMap()
+    // Dish lookup loaded from assets: "normalized_name|city" -> list of DishSentiment
+    private var dishLookup: Map<String, List<DishSentiment>> = emptyMap()
 
     fun initialize(context: Context) {
         appContext = context.applicationContext
@@ -22,7 +23,7 @@ object AppContainer {
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun loadDishLookup(context: Context): Map<String, List<String>> {
+    private fun loadDishLookup(context: Context): Map<String, List<DishSentiment>> {
         return try {
             val json = context.assets.open("dish_mentions_by_business.json")
                 .bufferedReader().use { it.readText() }
@@ -30,7 +31,16 @@ object AppContainer {
             buildMap {
                 raw.keys().forEach { key ->
                     val arr = raw.getJSONArray(key)
-                    put(key, List(arr.length()) { arr.getString(it) })
+                    val dishes = List(arr.length()) { i ->
+                        val obj = arr.getJSONObject(i)
+                        DishSentiment(
+                            dishName = obj.getString("dish"),
+                            positive = obj.optInt("positive", 0),
+                            neutral  = obj.optInt("neutral",  0),
+                            negative = obj.optInt("negative", 0)
+                        )
+                    }
+                    put(key, dishes)
                 }
             }
         } catch (_: Exception) {
