@@ -30,6 +30,7 @@ import com.example.vibevision.ui.components.DishCard
 import com.example.vibevision.ui.components.DishCardVariant
 import com.example.vibevision.ui.theme.SageGreen
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun DishSentimentScreen(restaurant: Restaurant) {
     var sortBy by remember { mutableStateOf("Positive") }
