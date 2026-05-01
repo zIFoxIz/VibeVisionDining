@@ -90,7 +90,7 @@ fun RestaurantCard(
                 Box(
                     modifier = Modifier
                         .width(5.dp)
-                        .height(if (variant == RestaurantCardVariant.COMPACT) 68.dp else 110.dp)
+                        .fillMaxHeight()
                         .background(accentColor)
                 )
             }

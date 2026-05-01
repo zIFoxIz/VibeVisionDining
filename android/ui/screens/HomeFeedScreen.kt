@@ -175,26 +175,28 @@ fun HomeFeedScreen(
             }
         }
 
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(heroCardBrush)
-                    .padding(horizontal = 20.dp, vertical = 18.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = "AI Summary",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = aiSummary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.88f)
-                    )
+        if (aiSummary.isNotBlank()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(heroCardBrush)
+                        .padding(horizontal = 20.dp, vertical = 18.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "AI Summary",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = aiSummary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.88f)
+                        )
+                    }
                 }
             }
         }
