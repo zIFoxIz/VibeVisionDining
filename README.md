@@ -4,7 +4,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3DDC84)
 ![Language](https://img.shields.io/badge/Kotlin-Compose-7F52FF)
 ![ML](https://img.shields.io/badge/ML-Logistic%20Regression-orange)
-![Status](https://img.shields.io/badge/status-active%20development-blue)
+![Status](https://img.shields.io/badge/status-v1.0%20complete-brightgreen)
 
 VibeVision Dining is an Android application in active development that analyzes restaurant review text and predicts sentiment as negative, neutral, or positive.
 

@@ -102,7 +102,6 @@ fun RestaurantDetailScreen(
     var capturedPhoto by remember { mutableStateOf<Bitmap?>(null) }
     var cameraMessage by remember { mutableStateOf<String?>(null) }
     val filteredReviews = filterAndSortReviews(reviews, selectedCategory, sortOption)
-    val (effectiveDishes, dishesAreEstimated) = remember(restaurant) { effectiveDishSentiments(restaurant) }
 
     val takePhotoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
@@ -377,63 +376,6 @@ fun RestaurantDetailScreen(
             }
         }
 
-        if (effectiveDishes.isNotEmpty()) {
-            item {
-                SectionHeader(
-                    title = "Dish Sentiment",
-                    subtitle = if (dishesAreEstimated) "Based on menu highlights — no live data yet" else "How diners feel about each dish"
-                )
-            }
-
-            items(effectiveDishes) { dish ->
-                DishCard(dish = dish, variant = DishCardVariant.HIGHLIGHT)
-            }
-        }
-
-        if (effectiveDishes.isNotEmpty() && !dishesAreEstimated) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(text = "👍 Positive Votes", style = MaterialTheme.typography.titleMedium)
-                        val maxPositive = effectiveDishes.maxOfOrNull { it.positive }?.coerceAtLeast(1) ?: 1
-                        effectiveDishes.forEach { dish ->
-                            val ratio = dish.positive.toFloat() / maxPositive.toFloat()
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = dish.dishName,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier.weight(1f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = "${dish.positive} 👍",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = SageGreen
-                                    )
-                                }
-                                LinearProgressIndicator(
-                                    progress = ratio.coerceIn(0f, 1f),
-                                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                                    color = SageGreen,
-                                    trackColor = SageGreen.copy(alpha = 0.12f)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         item {
             SectionHeader(title = "Reviews", subtitle = "What diners are saying")
         }
@@ -586,13 +528,5 @@ private fun filterAndSortReviews(reviews: List<Review>, category: String, sort: 
         "Lowest" -> filtered.sortedBy { it.rating }
         else -> filtered.sortedByDescending { it.rating }
     }
-}
-
-private fun effectiveDishSentiments(restaurant: Restaurant): Pair<List<com.example.vibevision.model.DishSentiment>, Boolean> {
-    if (restaurant.dishSentiments.isNotEmpty()) return Pair(restaurant.dishSentiments, false)
-    val estimated = restaurant.menuPreview.map { name ->
-        com.example.vibevision.model.DishSentiment(dishName = name, positive = 3, neutral = 2, negative = 1)
-    }
-    return Pair(estimated, estimated.isNotEmpty())
 }
 
